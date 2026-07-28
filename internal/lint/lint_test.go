@@ -100,6 +100,16 @@ func TestCoveredDraftIsClean(t *testing.T) {
 	}
 }
 
+func TestSpecPathIsCleanRelative(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/sharing/perms.md": "---\nid: p\ntitle: t\n---\nbody\n",
+		"internal/x_test.go":     "// spec:p\n",
+	})
+	if got := rep.Specs[0].Path; got != "specs/sharing/perms.md" {
+		t.Fatalf("spec path = %q, want clean relative path (no '..')", got)
+	}
+}
+
 func TestBodyIsCarried(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/e.md":         "---\nid: e\ntitle: t\n---\n## Why\nbecause\n",

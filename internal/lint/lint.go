@@ -183,7 +183,8 @@ func Run(cfg Config) (*Report, error) {
 	for _, s := range specs {
 		draft := s.Status == spec.StatusDraft
 		st := SpecStatus{
-			ID: s.ID, Title: s.Title, Status: s.Status, Path: relPath(walkRoot, s.Path),
+			// s.Path is already relative to cfg.Root (set in loadSpecs).
+			ID: s.ID, Title: s.Title, Status: s.Status, Path: s.Path,
 			Body: s.Body, Covers: s.Covers, Tests: refs[s.ID],
 			Covered: len(refs[s.ID]) > 0, CoversOK: true, Draft: draft,
 		}
