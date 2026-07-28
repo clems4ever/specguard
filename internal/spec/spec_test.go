@@ -15,6 +15,32 @@ func TestParseValid(t *testing.T) {
 	}
 }
 
+func TestParseCapturesBody(t *testing.T) {
+	s, err := Parse([]byte("---\nid: x\ntitle: t\n---\n\n## Behaviour\n\nsome prose\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Body != "## Behaviour\n\nsome prose\n" {
+		t.Fatalf("body = %q", s.Body)
+	}
+}
+
+func TestParseDraftStatus(t *testing.T) {
+	s, err := Parse([]byte("---\nid: x\ntitle: t\nstatus: draft\n---\nbody\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Status != StatusDraft {
+		t.Fatalf("status = %q", s.Status)
+	}
+}
+
+func TestParseBadStatus(t *testing.T) {
+	if _, err := Parse([]byte("---\nid: x\ntitle: t\nstatus: wip\n---\n")); err == nil {
+		t.Fatal("expected error for invalid status")
+	}
+}
+
 func TestParseMissingID(t *testing.T) {
 	if _, err := Parse([]byte("---\ntitle: No id\n---\n")); err == nil {
 		t.Fatal("expected error for missing id")

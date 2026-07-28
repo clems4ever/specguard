@@ -84,10 +84,12 @@ type SpecStatus struct {
 	Title    string   `json:"title"`
 	Status   string   `json:"status,omitempty"`
 	Path     string   `json:"path"`
+	Body     string   `json:"body,omitempty"`
 	Tests    []string `json:"tests"`
 	Covers   []string `json:"covers,omitempty"`
 	Covered  bool     `json:"covered"`
 	CoversOK bool     `json:"coversOk"`
+	Draft    bool     `json:"draft"`
 }
 
 // Report is the full result of a run.
@@ -179,16 +181,27 @@ func Run(cfg Config) (*Report, error) {
 
 	// 3. Resolve each spec's status.
 	for _, s := range specs {
+		draft := s.Status == spec.StatusDraft
 		st := SpecStatus{
 			ID: s.ID, Title: s.Title, Status: s.Status, Path: relPath(walkRoot, s.Path),
-			Covers: s.Covers, Tests: refs[s.ID], Covered: len(refs[s.ID]) > 0, CoversOK: true,
+			Body: s.Body, Covers: s.Covers, Tests: refs[s.ID],
+			Covered: len(refs[s.ID]) > 0, CoversOK: true, Draft: draft,
 		}
 		sort.Strings(st.Tests)
 		if !st.Covered {
-			rep.Findings = append(rep.Findings, Finding{
-				Severity: Error, Rule: "uncovered-spec", Spec: s.ID, File: st.Path,
-				Message: "no test references spec:" + s.ID,
-			})
+			// A draft spec is allowed to have no test yet — it is a planned
+			// behaviour, reported as a warning rather than a build failure.
+			if draft {
+				rep.Findings = append(rep.Findings, Finding{
+					Severity: Warning, Rule: "uncovered-draft", Spec: s.ID, File: st.Path,
+					Message: "draft spec has no covering test yet",
+				})
+			} else {
+				rep.Findings = append(rep.Findings, Finding{
+					Severity: Error, Rule: "uncovered-spec", Spec: s.ID, File: st.Path,
+					Message: "no test references spec:" + s.ID,
+				})
+			}
 		}
 		for _, entry := range s.Covers {
 			if !anyFileMatches(entry, allFiles) {

@@ -70,6 +70,46 @@ func TestUncoveredSpecFails(t *testing.T) {
 	}
 }
 
+func TestUncoveredDraftWarnsNotFails(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/planned.md":   "---\nid: planned\ntitle: Planned\nstatus: draft\n---\nbody\n",
+		"internal/x_test.go": "package x\n",
+	})
+	if !rep.OK {
+		t.Fatalf("an uncovered draft should still PASS, got %+v", rep.Findings)
+	}
+	fs := findings(rep, "uncovered-draft")
+	if len(fs) != 1 || fs[0].Severity != Warning {
+		t.Fatalf("want one uncovered-draft warning, got %+v", rep.Findings)
+	}
+	if len(findings(rep, "uncovered-spec")) != 0 {
+		t.Fatalf("draft must not raise uncovered-spec, got %+v", rep.Findings)
+	}
+	if !rep.Specs[0].Draft {
+		t.Fatal("spec should be marked Draft")
+	}
+}
+
+func TestCoveredDraftIsClean(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/planned.md":   "---\nid: planned\ntitle: Planned\nstatus: draft\n---\nbody\n",
+		"internal/x_test.go": "// spec:planned\n",
+	})
+	if !rep.OK || len(rep.Findings) != 0 {
+		t.Fatalf("a covered draft should be clean, got %+v", rep.Findings)
+	}
+}
+
+func TestBodyIsCarried(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/e.md":         "---\nid: e\ntitle: t\n---\n## Why\nbecause\n",
+		"internal/x_test.go": "// spec:e\n",
+	})
+	if rep.Specs[0].Body != "## Why\nbecause\n" {
+		t.Fatalf("body not carried: %q", rep.Specs[0].Body)
+	}
+}
+
 func TestUndefinedReferenceFails(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/edit.md":          "---\nid: skills-edit\ntitle: t\n---\nbody\n",
