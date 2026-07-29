@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Report } from './types';
-import { fetchReport } from './api';
+import type { Report, DiffResponse } from './types';
+import { fetchReport, fetchDiff } from './api';
 import { Dashboard } from './components/Dashboard';
 import { SpecDetail } from './components/SpecDetail';
 
@@ -14,6 +14,9 @@ export function App() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [changedMode, setChangedMode] = useState(false);
+  const [diff, setDiff] = useState<DiffResponse | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(
     specIdFromPath(window.location.pathname),
   );
@@ -30,6 +33,35 @@ export function App() {
       setRefreshing(false);
     }
   }, []);
+
+  const loadDiff = useCallback(async (signal?: AbortSignal) => {
+    setDiffLoading(true);
+    try {
+      setDiff(await fetchDiff(undefined, signal));
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        setDiff({ enabled: true, error: (e as Error).message });
+      }
+    } finally {
+      setDiffLoading(false);
+    }
+  }, []);
+
+  // Toggle the "Changed only" view, lazily fetching the delta the first time.
+  const toggleChanged = useCallback(() => {
+    setChangedMode((m) => {
+      const next = !m;
+      if (next) loadDiff();
+      return next;
+    });
+  }, [loadDiff]);
+
+  // Refresh re-reads the report and, in changed mode, recomputes the delta — so
+  // edits on disk show up live.
+  const refresh = useCallback(() => {
+    load();
+    if (changedMode) loadDiff();
+  }, [load, loadDiff, changedMode]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -79,6 +111,15 @@ export function App() {
     return <SpecDetail spec={selected} report={report} onBack={back} />;
   }
   return (
-    <Dashboard report={report} onSelect={select} onRefresh={() => load()} refreshing={refreshing} />
+    <Dashboard
+      report={report}
+      onSelect={select}
+      onRefresh={refresh}
+      refreshing={refreshing}
+      changedMode={changedMode}
+      onToggleChanged={toggleChanged}
+      diff={diff}
+      diffLoading={diffLoading}
+    />
   );
 }

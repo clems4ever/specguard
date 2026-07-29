@@ -404,3 +404,107 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- toolbar toggle + changed-only view ---- */
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.toggle {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.toggle:hover {
+  border-color: var(--accent);
+}
+.toggle-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1220;
+  font-weight: 600;
+}
+.changes-caption {
+  margin: 4px 2px 10px;
+  font-size: 13px;
+}
+.change-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.change-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+}
+button.change-row {
+  cursor: pointer;
+}
+button.change-row:hover {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+.change-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.change-title {
+  font-weight: 500;
+}
+.change-id {
+  color: var(--muted);
+}
+.change-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.change-kind {
+  font-weight: 600;
+}
+.change-glyph {
+  font-weight: 700;
+  width: 16px;
+  text-align: center;
+}
+/* per-kind accents */
+.change-coverage-lost { border-left-color: var(--red); }
+.kind-coverage-lost { color: var(--red); }
+.change-removed { border-left-color: var(--red); }
+.kind-removed { color: var(--red); }
+.change-added { border-left-color: var(--green); }
+.kind-added { color: var(--green); }
+.change-coverage-gained { border-left-color: var(--green); }
+.kind-coverage-gained { color: var(--green); }
+.change-edited { border-left-color: var(--yellow); }
+.kind-edited { color: var(--yellow); }
+.change-impl-changed { border-left-color: var(--accent); }
+.kind-impl-changed { color: var(--accent); }
+.change-regression {
+  box-shadow: 0 0 0 1px var(--red) inset;
+}
+.tag {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.tag-draft { color: var(--yellow); border-color: var(--yellow); }
+.tag-regression { color: var(--red); border-color: var(--red); font-weight: 600; }

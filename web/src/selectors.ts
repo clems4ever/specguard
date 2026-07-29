@@ -1,7 +1,27 @@
 // Pure derivations over a Report. Kept free of React/DOM so they can be unit
 // tested in isolation and reused by every component.
 
-import type { Report, SpecStatus, Finding } from './types';
+import type { Report, SpecStatus, Finding, ChangeKind } from './types';
+
+/** Human labels for the diff change kinds. */
+export const KIND_LABEL: Record<ChangeKind, string> = {
+  added: 'Added',
+  removed: 'Removed',
+  'coverage-lost': 'Coverage lost',
+  'coverage-gained': 'Coverage gained',
+  edited: 'Edited',
+  'impl-changed': 'Impl changed',
+};
+
+/** A compact glyph per change kind, mirroring the CLI. */
+export const KIND_GLYPH: Record<ChangeKind, string> = {
+  added: '+',
+  removed: '−',
+  'coverage-lost': '✗',
+  'coverage-gained': '✓',
+  edited: '~',
+  'impl-changed': '•',
+};
 
 export type SpecState = 'covered' | 'warning' | 'draft' | 'uncovered';
 

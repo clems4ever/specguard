@@ -40,6 +40,9 @@ type Change struct {
 	Kind   Kind   `json:"kind"`
 	Detail string `json:"detail,omitempty"`
 	Draft  bool   `json:"draft"`
+	// Regression marks a change a reviewer must not miss (lost coverage, or a new
+	// spec that arrived uncovered) — a non-draft that leaves a behaviour unpinned.
+	Regression bool `json:"regression"`
 	// Files lists the changed files that fall under the spec's covers (ImplChanged).
 	Files []string `json:"files,omitempty"`
 }
@@ -92,15 +95,17 @@ func Compute(base, head *lint.Report, changedFiles []string) *Delta {
 		b, existed := baseByID[h.ID]
 		switch {
 		case !existed:
+			reg := !h.Covered && !h.Draft
 			d.add(Change{ID: h.ID, Title: h.Title, Kind: Added, Draft: h.Draft,
-				Detail: coverageWord(h.Covered)})
-			if !h.Covered && !h.Draft {
+				Detail: coverageWord(h.Covered), Regression: reg})
+			if reg {
 				d.Regressions++
 			}
 		case b.Covered && !h.Covered:
+			reg := !h.Draft
 			d.add(Change{ID: h.ID, Title: h.Title, Kind: CoverageLost, Draft: h.Draft,
-				Detail: "covered → uncovered"})
-			if !h.Draft {
+				Detail: "covered → uncovered", Regression: reg})
+			if reg {
 				d.Regressions++
 			}
 		case !b.Covered && h.Covered:

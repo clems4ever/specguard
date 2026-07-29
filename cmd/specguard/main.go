@@ -91,11 +91,19 @@ func serveCmd(args []string) {
 		strict     = fs.Bool("strict", false, "treat warnings as errors")
 		addr       = fs.String("addr", ":8137", "listen address")
 		webDir     = fs.String("web", "", "directory of built UI assets to serve (optional)")
+		diffBase   = fs.String("diff-base", "HEAD", "git ref the 'Changed only' view diffs against (empty disables)")
 	)
 	_ = fs.Parse(args)
 
 	cfg := loadConfig(*root, *configPath, *strict)
 	srv := server.New(cfg, server.ResolveWebDir(*webDir))
+	if *diffBase != "" {
+		configName := ".specguard.yml"
+		if *configPath != "" {
+			configName = filepath.Base(*configPath)
+		}
+		srv.EnableDiff(*diffBase, configName)
+	}
 	fmt.Fprintf(os.Stderr, "specguard: serving report for %s on http://localhost%s/api/report\n", cfg.Root, *addr)
 	if err := server.ListenAndServe(*addr, srv.Handler()); err != nil {
 		fmt.Fprintln(os.Stderr, "specguard: serve:", err)

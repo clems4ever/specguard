@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import type { Report, SpecStatus } from '../types';
+import type { Report, SpecStatus, DiffResponse } from '../types';
 import { filterSpecs, groupByArea, specState, summarize } from '../selectors';
 import { StatusBadge } from './StatusBadge';
 import { FindingsPanel } from './FindingsPanel';
+import { ChangesView } from './ChangesView';
 
 function SpecRow({ spec, onSelect }: { spec: SpecStatus; onSelect: (id: string) => void }) {
   const tests = spec.tests ?? [];
@@ -38,11 +39,19 @@ export function Dashboard({
   onSelect,
   onRefresh,
   refreshing,
+  changedMode = false,
+  onToggleChanged,
+  diff = null,
+  diffLoading = false,
 }: {
   report: Report;
   onSelect: (id: string) => void;
   onRefresh: () => void;
   refreshing: boolean;
+  changedMode?: boolean;
+  onToggleChanged?: () => void;
+  diff?: DiffResponse | null;
+  diffLoading?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const summary = useMemo(() => summarize(report), [report]);
@@ -58,9 +67,22 @@ export function Dashboard({
         <div className="brand">
           <span className="brand-mark">◉</span> specguard
         </div>
-        <button className="refresh" onClick={onRefresh} disabled={refreshing} data-testid="refresh">
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className="topbar-actions">
+          {onToggleChanged && (
+            <button
+              className={`toggle ${changedMode ? 'toggle-on' : ''}`}
+              onClick={onToggleChanged}
+              data-testid="toggle-changed"
+              aria-pressed={changedMode}
+              title="Show only the specs this change touched"
+            >
+              {changedMode ? 'All specs' : 'Changed only'}
+            </button>
+          )}
+          <button className="refresh" onClick={onRefresh} disabled={refreshing} data-testid="refresh">
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </header>
 
       <div
@@ -83,35 +105,41 @@ export function Dashboard({
         <Stat label="Test files" value={summary.testFiles} />
       </div>
 
-      <input
-        className="search"
-        data-testid="search"
-        placeholder="Filter specs by id, title or area…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-
-      {totalShown === 0 ? (
-        <p className="empty" data-testid="no-match">
-          No specs match “{query}”.
-        </p>
+      {changedMode ? (
+        <ChangesView diff={diff} loading={diffLoading} onSelect={onSelect} />
       ) : (
-        groups.map((g) => (
-          <section key={g.area} className="area" data-testid={`area-${g.area}`}>
-            <h2 className="area-title">{g.area}</h2>
-            <div className="spec-list">
-              {g.specs.map((s) => (
-                <SpecRow key={s.id} spec={s} onSelect={onSelect} />
-              ))}
-            </div>
-          </section>
-        ))
-      )}
+        <>
+          <input
+            className="search"
+            data-testid="search"
+            placeholder="Filter specs by id, title or area…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
 
-      <section className="findings-section">
-        <h2>Findings</h2>
-        <FindingsPanel findings={report.findings ?? []} />
-      </section>
+          {totalShown === 0 ? (
+            <p className="empty" data-testid="no-match">
+              No specs match “{query}”.
+            </p>
+          ) : (
+            groups.map((g) => (
+              <section key={g.area} className="area" data-testid={`area-${g.area}`}>
+                <h2 className="area-title">{g.area}</h2>
+                <div className="spec-list">
+                  {g.specs.map((s) => (
+                    <SpecRow key={s.id} spec={s} onSelect={onSelect} />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+
+          <section className="findings-section">
+            <h2>Findings</h2>
+            <FindingsPanel findings={report.findings ?? []} />
+          </section>
+        </>
+      )}
     </div>
   );
 }

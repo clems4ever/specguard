@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/clems4ever/specguard/internal/lint"
@@ -153,6 +154,51 @@ func TestStaticSPAFallback(t *testing.T) {
 	n, _ := resp.Body.Read(body)
 	if resp.StatusCode != http.StatusOK || string(body[:n]) == "" {
 		t.Fatalf("SPA fallback failed: status %d", resp.StatusCode)
+	}
+}
+
+func TestDiffDisabledWithoutGit(t *testing.T) {
+	// A tempdir tree is not a git repo → /api/diff reports disabled, never errors.
+	ts := newTestServer(t, map[string]string{
+		"specs/a.md":         "---\nid: a\ntitle: A\n---\n",
+		"internal/x_test.go": "// spec:a\n",
+	}, "")
+	resp, err := http.Get(ts.URL + "/api/diff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["enabled"] != false {
+		t.Fatalf("diff should be disabled when not enabled/no git; got %+v", body)
+	}
+}
+
+func TestBadgeSVG(t *testing.T) {
+	ts := newTestServer(t, map[string]string{
+		"specs/a.md":         "---\nid: a\ntitle: A\n---\n",
+		"internal/x_test.go": "// spec:a\n",
+	}, "")
+	resp, err := http.Get(ts.URL + "/api/badge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if ct := resp.Header.Get("Content-Type"); ct != "image/svg+xml" {
+		t.Fatalf("badge content-type = %q", ct)
+	}
+	buf := make([]byte, 512)
+	n, _ := resp.Body.Read(buf)
+	svg := string(buf[:n])
+	if !strings.Contains(svg, "<svg") || !strings.Contains(svg, "specguard") {
+		t.Fatalf("badge is not a specguard SVG: %q", svg)
+	}
+	// One covered spec → green pass badge, not "failing".
+	if strings.Contains(svg, "failing") {
+		t.Fatal("a passing project must not render a failing badge")
 	}
 }
 

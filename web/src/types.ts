@@ -27,3 +27,43 @@ export interface Report {
   testFiles: number;
   ok: boolean;
 }
+
+// Mirrors internal/diff (the "what changed" delta vs a base git ref).
+export type ChangeKind =
+  | 'added'
+  | 'removed'
+  | 'coverage-lost'
+  | 'coverage-gained'
+  | 'edited'
+  | 'impl-changed';
+
+export interface DiffChange {
+  id: string;
+  title: string;
+  kind: ChangeKind;
+  detail?: string;
+  draft: boolean;
+  regression: boolean;
+  files?: string[] | null;
+}
+
+export interface Delta {
+  base: string;
+  changes: DiffChange[] | null;
+  added: number;
+  removed: number;
+  coverageLost: number;
+  coverageGained: number;
+  edited: number;
+  implChanged: number;
+  regressions: number;
+  baseOk: boolean;
+  headOk: boolean;
+}
+
+export interface DiffResponse {
+  enabled: boolean;
+  delta?: Delta;
+  error?: string;
+  base?: string;
+}

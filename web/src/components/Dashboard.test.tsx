@@ -83,4 +83,34 @@ describe('Dashboard', () => {
     const items = within(findings).getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('uncovered-spec'); // error before warnings
   });
+
+  it('offers a Changed-only toggle and fires it', async () => {
+    const onToggleChanged = vi.fn();
+    renderDash({ onToggleChanged });
+    const toggle = screen.getByTestId('toggle-changed');
+    expect(toggle).toHaveTextContent('Changed only');
+    await userEvent.click(toggle);
+    expect(onToggleChanged).toHaveBeenCalled();
+  });
+
+  it('swaps the area list for the changed view when changedMode is on', () => {
+    renderDash({
+      changedMode: true,
+      onToggleChanged: vi.fn(),
+      diff: {
+        enabled: true,
+        delta: {
+          base: 'HEAD',
+          changes: [
+            { id: 'x-lost', title: 'X', kind: 'coverage-lost', detail: 'covered → uncovered', draft: false, regression: true },
+          ],
+          added: 0, removed: 0, coverageLost: 1, coverageGained: 0, edited: 0, implChanged: 0,
+          regressions: 1, baseOk: true, headOk: false,
+        },
+      },
+    });
+    // The changed view is shown; the full area grouping is not.
+    expect(screen.getByTestId('change-row-x-lost')).toBeInTheDocument();
+    expect(screen.queryByTestId('area-auth')).not.toBeInTheDocument();
+  });
 });
