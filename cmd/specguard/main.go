@@ -7,6 +7,7 @@
 //
 //	specguard [flags]         run the check and print a report (exit 1 on failure)
 //	specguard serve [flags]   serve the report over HTTP for the web UI
+//	specguard diff [flags]    show only the specs a change touched (vs a base ref)
 package main
 
 import (
@@ -16,14 +17,21 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/clems4ever/specguard/internal/diff"
 	"github.com/clems4ever/specguard/internal/lint"
 	"github.com/clems4ever/specguard/internal/server"
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		serveCmd(os.Args[2:])
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "serve":
+			serveCmd(os.Args[2:])
+			return
+		case "diff":
+			diffCmd(os.Args[2:])
+			return
+		}
 	}
 	lintCmd(os.Args[1:])
 }
@@ -92,6 +100,63 @@ func serveCmd(args []string) {
 	if err := server.ListenAndServe(*addr, srv.Handler()); err != nil {
 		fmt.Fprintln(os.Stderr, "specguard: serve:", err)
 		os.Exit(2)
+	}
+}
+
+func diffCmd(args []string) {
+	fs := flag.NewFlagSet("specguard diff", flag.ExitOnError)
+	var (
+		root             = fs.String("C", ".", "directory to run in (repo root)")
+		configPath       = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		strict           = fs.Bool("strict", false, "treat warnings as errors")
+		base             = fs.String("base", "origin/main", "git ref to diff against")
+		format           = fs.String("format", "text", "output format: text | markdown | json")
+		failOnRegression = fs.Bool("fail-on-regression", false, "exit non-zero if a spec lost coverage or arrived uncovered")
+	)
+	_ = fs.Parse(args)
+
+	if !diff.HasGit(*root) {
+		fmt.Fprintln(os.Stderr, "specguard diff: not a git repository (diff needs git):", *root)
+		os.Exit(2)
+	}
+
+	cfg := loadConfig(*root, *configPath, *strict)
+	head, err := lint.Run(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard diff: head:", err)
+		os.Exit(2)
+	}
+	configName := ".specguard.yml"
+	if *configPath != "" {
+		configName = filepath.Base(*configPath)
+	}
+	baseRep, err := diff.BaseReport(*root, *base, configName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard diff: base:", err)
+		os.Exit(2)
+	}
+	changed, err := diff.ChangedFiles(*root, *base)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard diff: changed files:", err)
+		os.Exit(2)
+	}
+
+	d := diff.Compute(baseRep, head, changed)
+	d.Base = *base
+
+	switch *format {
+	case "json":
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(d)
+	case "markdown", "md":
+		diff.RenderMarkdown(os.Stdout, d, *base)
+	default:
+		diff.RenderText(os.Stdout, d, *base)
+	}
+
+	if *failOnRegression && d.Regressions > 0 {
+		os.Exit(1)
 	}
 }
 
