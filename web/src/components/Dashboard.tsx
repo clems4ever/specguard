@@ -6,7 +6,15 @@ import { FindingsPanel } from './FindingsPanel';
 import { ChangesView } from './ChangesView';
 import { Stamp } from './Stamp';
 
-function SpecRow({ spec, onSelect }: { spec: SpecStatus; onSelect: (id: string) => void }) {
+function SpecRow({
+  spec,
+  onSelect,
+  hasResults,
+}: {
+  spec: SpecStatus;
+  onSelect: (id: string) => void;
+  hasResults: boolean;
+}) {
   const tests = spec.tests ?? [];
   return (
     <button
@@ -14,7 +22,7 @@ function SpecRow({ spec, onSelect }: { spec: SpecStatus; onSelect: (id: string) 
       data-testid={`spec-row-${spec.id}`}
       onClick={() => onSelect(spec.id)}
     >
-      <StatusBadge state={specState(spec)} />
+      <StatusBadge state={specState(spec, hasResults)} />
       <span className="spec-row-main">
         <span className="spec-row-title">{spec.title}</span>
         <code className="spec-row-id">{spec.id}</code>
@@ -58,6 +66,9 @@ export function Dashboard({
 }) {
   const [query, setQuery] = useState('');
   const summary = useMemo(() => summarize(report), [report]);
+  // The headline reflects traceability AND, when a run was ingested, its
+  // outcome: a covered-but-failing spec flips the verdict to FAIL.
+  const pass = report.ok && !(summary.hasResults && summary.failing > 0);
   const groups = useMemo(
     () => groupByArea(filterSpecs(report.specs ?? [], query)),
     [report.specs, query],
@@ -92,22 +103,39 @@ export function Dashboard({
       </header>
 
       <div
-        className={`banner ${report.ok ? 'banner-pass' : 'banner-fail'}`}
+        className={`banner ${pass ? 'banner-pass' : 'banner-fail'}`}
         data-testid="status-banner"
       >
-        <span className="banner-verdict">{report.ok ? 'PASS' : 'FAIL'}</span>
+        <span className="banner-verdict">{pass ? 'PASS' : 'FAIL'}</span>
         <span className="banner-detail">
           {summary.errors} error{summary.errors === 1 ? '' : 's'}, {summary.warnings} warning
-          {summary.warnings === 1 ? '' : 's'} across {summary.total} spec
-          {summary.total === 1 ? '' : 's'}
+          {summary.warnings === 1 ? '' : 's'}
+          {summary.hasResults && (
+            <>
+              {', '}
+              <strong>{summary.failing}</strong> failing
+            </>
+          )}
+          {' across '}
+          {summary.total} spec{summary.total === 1 ? '' : 's'}
         </span>
       </div>
 
       <div className="stats">
         <Stat label="Coverage" value={`${summary.coveragePct}%`} tone="accent" />
-        <Stat label="Covered" value={summary.covered} tone="covered" />
-        <Stat label="Uncovered" value={summary.uncovered} tone="uncovered" />
-        <Stat label="Drafts" value={summary.drafts} tone="draft" />
+        {summary.hasResults ? (
+          <>
+            <Stat label="Passing" value={summary.passing} tone="covered" />
+            <Stat label="Failing" value={summary.failing} tone="uncovered" />
+            <Stat label="Not run" value={summary.skipped + summary.notRun} tone="draft" />
+          </>
+        ) : (
+          <>
+            <Stat label="Covered" value={summary.covered} tone="covered" />
+            <Stat label="Uncovered" value={summary.uncovered} tone="uncovered" />
+            <Stat label="Drafts" value={summary.drafts} tone="draft" />
+          </>
+        )}
         <Stat label="Test files" value={summary.testFiles} />
       </div>
 
@@ -133,7 +161,7 @@ export function Dashboard({
                 <h2 className="area-title">{g.area}</h2>
                 <div className="spec-list">
                   {g.specs.map((s) => (
-                    <SpecRow key={s.id} spec={s} onSelect={onSelect} />
+                    <SpecRow key={s.id} spec={s} onSelect={onSelect} hasResults={summary.hasResults} />
                   ))}
                 </div>
               </section>

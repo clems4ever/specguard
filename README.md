@@ -85,7 +85,17 @@ commit and build time so a viewer knows how fresh it is.
 specguard report -o report.html                     # from the embedded UI
 specguard report -o report.html -branch main -commit "$SHA"
 specguard report -format json -o report.json        # same data, machine-readable
+
+# Overlay a real test run so the report shows pass/fail per spec (not just that
+# a covering test exists). Accepts Playwright JSON and `go test -json`:
+go test -json ./... > go.json
+specguard report -results go.json,playwright.json -o report.html
 ```
+
+With `-results`, each spec shows **passing / failing / skipped**, and a spec that
+is *covered but failing* reads red — the state a static traceability check can't
+see. Correlation: Playwright's `@spec:<id>` tag maps a result straight to a spec;
+Go results map via the test function the `// spec:<id>` comment sits above.
 
 `.github/workflows/pages.yml` publishes this for `main` to GitHub Pages on every
 push, so anyone can explore the specs at a stable URL without checking out the

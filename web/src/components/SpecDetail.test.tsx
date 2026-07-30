@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SpecDetail } from './SpecDetail';
-import { mixedReport, spec } from '../test/fixtures';
+import { mixedReport, resultsReport, spec } from '../test/fixtures';
 import type { ReportMeta } from '../types';
 
 const login = mixedReport.specs.find((s) => s.id === 'auth-login')!;
@@ -72,5 +72,14 @@ describe('SpecDetail', () => {
     expect(screen.getByTestId('spec-source-link').tagName).toBe('CODE');
     // The label still carries the line, just not a link.
     expect(within(screen.getByTestId('test-list')).getByText('server/auth_test.go:42')).toBeInTheDocument();
+  });
+
+  it('shows the outcome badge and per-test status when results are present', () => {
+    const failing = resultsReport.specs.find((s) => s.id === 'auth-logout')!;
+    render(<SpecDetail spec={failing} report={resultsReport} onBack={() => {}} />);
+    // Head badge reflects the failing outcome.
+    expect(screen.getByTestId('badge-failing')).toBeInTheDocument();
+    // The covering test shows a failed dot.
+    expect(within(screen.getByTestId('test-list')).getByTestId('ref-status-failed')).toBeInTheDocument();
   });
 });

@@ -23,11 +23,30 @@ export const KIND_GLYPH: Record<ChangeKind, string> = {
   'impl-changed': '•',
 };
 
-export type SpecState = 'covered' | 'warning' | 'draft' | 'uncovered';
+export type SpecState =
+  | 'covered'
+  | 'warning'
+  | 'draft'
+  | 'uncovered'
+  | 'passing'
+  | 'failing'
+  | 'skipped'
+  | 'not-run';
 
-/** The single visual state a spec row should render. */
-export function specState(s: SpecStatus): SpecState {
+/**
+ * The single visual state a spec row should render. When a test run has been
+ * ingested (hasResults), a covered spec shows its outcome — passing / failing /
+ * skipped / not-run — so "covered but failing" reads as red, not green.
+ * Otherwise it falls back to coverage state.
+ */
+export function specState(s: SpecStatus, hasResults = false): SpecState {
   if (!s.covered) return s.draft ? 'draft' : 'uncovered';
+  if (hasResults) {
+    if (s.result === 'failed') return 'failing';
+    if (s.result === 'passed') return 'passing';
+    if (s.result === 'skipped') return 'skipped';
+    return 'not-run'; // covered, but no result for it in the run
+  }
   if (!s.coversOk) return 'warning';
   return 'covered';
 }
@@ -37,6 +56,10 @@ export const STATE_LABEL: Record<SpecState, string> = {
   warning: 'Covers unmatched',
   draft: 'Draft',
   uncovered: 'Uncovered',
+  passing: 'Passing',
+  failing: 'Failing',
+  skipped: 'Skipped',
+  'not-run': 'Not run',
 };
 
 /** The area a spec belongs to, taken from `specs/<area>/<file>.md`. */
@@ -57,21 +80,38 @@ export interface Summary {
   testFiles: number;
   ok: boolean;
   coveragePct: number; // covered / (non-draft specs), 0..100
+  hasResults: boolean;
+  passing: number;
+  failing: number;
+  skipped: number;
+  notRun: number; // covered specs with no result in the run
 }
 
 export function summarize(report: Report): Summary {
   const specs = report.specs ?? [];
   const findings = report.findings ?? [];
+  const hasResults = !!report.hasResults;
   let covered = 0;
   let uncovered = 0;
   let drafts = 0;
-  let warnings = 0;
+  let passing = 0;
+  let failing = 0;
+  let skipped = 0;
+  let notRun = 0;
   for (const s of specs) {
-    const st = specState(s);
-    if (st === 'draft') drafts++;
-    else if (st === 'uncovered') uncovered++;
-    else covered++;
-    if (st === 'warning') warnings++;
+    // Coverage counts are independent of any test run.
+    if (!s.covered) {
+      if (s.draft) drafts++;
+      else uncovered++;
+    } else {
+      covered++;
+      if (hasResults) {
+        if (s.result === 'failed') failing++;
+        else if (s.result === 'passed') passing++;
+        else if (s.result === 'skipped') skipped++;
+        else notRun++;
+      }
+    }
   }
   const enforceable = specs.length - drafts;
   return {
@@ -84,6 +124,11 @@ export function summarize(report: Report): Summary {
     testFiles: report.testFiles,
     ok: report.ok,
     coveragePct: enforceable === 0 ? 100 : Math.round((covered / enforceable) * 100),
+    hasResults,
+    passing,
+    failing,
+    skipped,
+    notRun,
   };
 }
 

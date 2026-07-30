@@ -6,6 +6,10 @@ const GLYPH: Record<SpecState, string> = {
   warning: '!',
   draft: '◦',
   uncovered: '✗',
+  passing: '✓',
+  failing: '✗',
+  skipped: '–',
+  'not-run': '?',
 };
 
 export function StatusBadge({ state }: { state: SpecState }) {

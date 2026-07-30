@@ -18,11 +18,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/clems4ever/specguard/internal/diff"
 	"github.com/clems4ever/specguard/internal/lint"
 	"github.com/clems4ever/specguard/internal/report"
+	"github.com/clems4ever/specguard/internal/results"
 	"github.com/clems4ever/specguard/internal/server"
 )
 
@@ -190,6 +192,7 @@ func reportCmd(args []string) {
 		branch     = fs.String("branch", "", "branch name to stamp (default: detected from git)")
 		commit     = fs.String("commit", "", "commit SHA to stamp (default: detected from git)")
 		repo       = fs.String("repo", "", "repository slug to stamp (e.g. owner/name)")
+		resultsArg = fs.String("results", "", "comma-separated test result files (Playwright JSON / `go test -json`) to show pass/fail")
 	)
 	_ = fs.Parse(args)
 
@@ -198,6 +201,16 @@ func reportCmd(args []string) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "specguard report:", err)
 		os.Exit(2)
+	}
+
+	// Overlay a test run, if provided, so the report shows pass/fail per spec.
+	if *resultsArg != "" {
+		set, err := results.Load(strings.Split(*resultsArg, ","))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "specguard report:", err)
+			os.Exit(2)
+		}
+		set.Apply(rep)
 	}
 
 	// Open the output sink up front, so we don't run a build only to fail on a

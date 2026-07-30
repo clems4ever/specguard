@@ -8,10 +8,15 @@ export interface Finding {
   message: string;
 }
 
+// The outcome of a test run for one spec/reference (empty = not ingested).
+export type TestStatus = 'passed' | 'failed' | 'skipped';
+
 // A `spec:<id>` reference: the test file and 1-based line it sits on.
 export interface Ref {
   file: string;
   line: number;
+  test?: string; // Go test function this reference sits above
+  status?: TestStatus; // outcome once results are ingested
 }
 
 export interface SpecStatus {
@@ -26,6 +31,7 @@ export interface SpecStatus {
   covered: boolean;
   coversOk: boolean;
   draft: boolean;
+  result?: TestStatus; // aggregate outcome of covering tests
 }
 
 export interface Report {
@@ -33,6 +39,7 @@ export interface Report {
   findings: Finding[] | null;
   testFiles: number;
   ok: boolean;
+  hasResults?: boolean; // a test run was ingested → show pass/fail
 }
 
 // ReportMeta stamps a generated static report so a viewer knows exactly what
