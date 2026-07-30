@@ -22,6 +22,7 @@ func TestSlugBranchExamples(t *testing.T) {
 // The whole point of a reversible encoding: two branch names that a lossy slug
 // would collapse together must stay distinct, so one report can never overwrite
 // another.
+// spec:report-branch-slug
 func TestSlugBranchNoCollision(t *testing.T) {
 	pairs := [][2]string{
 		{"feat/x", "feat-x"},

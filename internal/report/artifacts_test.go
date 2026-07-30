@@ -8,6 +8,7 @@ import (
 	"github.com/clems4ever/specguard/internal/lint"
 )
 
+// spec:report-artifacts-copied
 func TestWriteArtifactsCopiesAndRewritesPaths(t *testing.T) {
 	tmp := t.TempDir()
 	// A source screenshot on disk (as a runner would leave it).

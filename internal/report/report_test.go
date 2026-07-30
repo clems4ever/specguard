@@ -45,6 +45,7 @@ func extractPayload(t *testing.T, html string) (repJSON, metaJSON string) {
 	return html[i+len(a) : j], html[j+len(b) : k]
 }
 
+// spec:report-embeds-data
 func TestRenderEmbedsRoundTrippableReport(t *testing.T) {
 	rep := sampleReport()
 	out := render(t, tinyTemplate, rep, Meta{Branch: "main", Commit: "deadbeef"})
@@ -102,6 +103,7 @@ func TestRenderErrorsWithNoInjectionPoint(t *testing.T) {
 
 // The payload must be inert inside a <script>: a spec body containing </script>
 // or an HTML comment must not break out of the tag.
+// spec:report-escapes-breakout
 func TestRenderEscapesHTMLBreakout(t *testing.T) {
 	rep := &lint.Report{
 		OK: true,

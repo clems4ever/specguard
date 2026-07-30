@@ -52,25 +52,21 @@ jobs:
       - name: Build specguard
         run: go build -o specguard ./cmd/specguard
 
-      - name: Run the example test suite (for pass/fail in the report)
-        run: (cd example && go test -json ./... > "$RUNNER_TEMP/go-results.json") || true
+      - name: Run specguard's own test suite (real pass/fail on its own specs)
+        run: go test -json ./... > "$RUNNER_TEMP/go-results.json" || true
 
-      - name: Capture demo screenshots (for per-spec galleries)
-        working-directory: web
-        run: |
-          npx playwright install --with-deps chromium
-          node scripts/demo-shots.mjs "$RUNNER_TEMP/shots"
-
-      - name: Generate the static report for main
+      - name: Generate specguard's own spec report (dogfood)
         run: |
           mkdir -p public
-          ./specguard report -C example \
+          # specguard reports on ITSELF: specs/ pinned to the Go tests under
+          # internal/, with each spec's real pass/fail from the run above and
+          # deep links to the covering test on GitHub.
+          ./specguard report -C . \
             -web web/dist-single/index.html \
             -branch "${{ github.ref_name }}" \
             -commit "${{ github.sha }}" \
             -repo "${{ github.repository }}" \
-            -results "$RUNNER_TEMP/go-results.json,$RUNNER_TEMP/shots/results.json" \
-            -assets public/assets -assets-base assets \
+            -results "$RUNNER_TEMP/go-results.json" \
             -o public/index.html
           # Serve the same app for any path so deep links (/spec/<id>) resolve
           # on a hard refresh — GitHub Pages returns 404.html for unknown paths.

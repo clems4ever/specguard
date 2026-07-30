@@ -3,15 +3,21 @@ package results
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/clems4ever/specguard/internal/lint"
 )
 
+// fixture expands the %SPEC% placeholder in this file's test data to the real
+// token, keeping the literal out of the Go source so specguard doesn't read its
+// own fixtures as references when it lints itself.
+func fixture(s string) string { return strings.ReplaceAll(s, "%SPEC%", "spec:") }
+
 func writeFile(t *testing.T, name, content string) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), name)
-	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte(fixture(content)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return p
@@ -22,12 +28,12 @@ const playwrightJSON = `{
   "suites": [
     {
       "specs": [
-        {"title": "logs in", "tags": ["@spec:auth-login"], "tests": [{"results": [{"status": "passed"}]}]}
+        {"title": "logs in", "tags": ["@%SPEC%auth-login"], "tests": [{"results": [{"status": "passed"}]}]}
       ],
       "suites": [
         {"specs": [
-          {"title": "logout @spec:auth-logout", "tags": [], "tests": [{"results": [{"status": "failed"}]}]},
-          {"title": "skipped one", "tags": ["@spec:auth-skip"], "tests": [{"results": [{"status": "skipped"}]}]}
+          {"title": "logout @%SPEC%auth-logout", "tags": [], "tests": [{"results": [{"status": "failed"}]}]},
+          {"title": "skipped one", "tags": ["@%SPEC%auth-skip"], "tests": [{"results": [{"status": "skipped"}]}]}
         ]}
       ]
     }
@@ -44,6 +50,7 @@ const goTestJSON = `{"Action":"run","Test":"TestPass"}
 not-json build noise
 `
 
+// spec:results-playwright-tag
 func TestPlaywrightParsing(t *testing.T) {
 	set, err := Load([]string{writeFile(t, "pw.json", playwrightJSON)})
 	if err != nil {
@@ -61,6 +68,7 @@ func TestPlaywrightParsing(t *testing.T) {
 	}
 }
 
+// spec:results-go-func
 func TestGoTestParsing(t *testing.T) {
 	set, err := Load([]string{writeFile(t, "go.json", goTestJSON)})
 	if err != nil {
@@ -84,7 +92,7 @@ func TestGoTestParsing(t *testing.T) {
 const playwrightWithShots = `{
   "suites": [
     {"specs": [
-      {"title": "logs in", "tags": ["@spec:auth-login"], "tests": [{"results": [{"status": "passed",
+      {"title": "logs in", "tags": ["@%SPEC%auth-login"], "tests": [{"results": [{"status": "passed",
         "attachments": [
           {"name": "login screen", "contentType": "image/png", "path": "/tmp/a.png"},
           {"name": "trace", "contentType": "application/zip", "path": "/tmp/t.zip"}
@@ -93,6 +101,7 @@ const playwrightWithShots = `{
   ]
 }`
 
+// spec:results-screenshots
 func TestPlaywrightImageAttachments(t *testing.T) {
 	set, err := Load([]string{writeFile(t, "pw.json", playwrightWithShots)})
 	if err != nil {
@@ -108,6 +117,7 @@ func TestPlaywrightImageAttachments(t *testing.T) {
 	}
 }
 
+// spec:results-format-autodetect
 func TestFormatAutoDetection(t *testing.T) {
 	if !looksLikePlaywright([]byte(playwrightJSON)) {
 		t.Error("playwright report should be detected")
@@ -117,6 +127,7 @@ func TestFormatAutoDetection(t *testing.T) {
 	}
 }
 
+// spec:results-worst-wins
 func TestApplyCorrelatesAndAggregates(t *testing.T) {
 	rep := &lint.Report{
 		Specs: []lint.SpecStatus{
