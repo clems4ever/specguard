@@ -147,13 +147,18 @@ export function subtreeRollup(
   node: SpecNode,
   hasResults = false,
 ): { state: SpecState; count: number } {
-  // A leaf shows its own state. A parent starts from a good baseline — its own
-  // (possibly test-less) state must not drag the rollup down — and takes the
-  // worst state found among its descendants.
+  // A leaf shows its own state. A parent takes the worst state in its subtree —
+  // including its OWN state when it has a direct test of its own (a parent may
+  // be verified both by children and by its own tests). A test-less parent
+  // starts from a neutral-good baseline so it doesn't drag the rollup down.
   if (node.children.length === 0) {
     return { state: specState(node.spec, hasResults), count: 0 };
   }
-  let state: SpecState = hasResults ? 'passing' : 'covered';
+  let state: SpecState = node.spec.covered
+    ? specState(node.spec, hasResults)
+    : hasResults
+      ? 'passing'
+      : 'covered';
   let count = 0;
   for (const c of node.children) {
     const r = subtreeRollup(c, hasResults);
@@ -209,7 +214,10 @@ export function summarize(report: Report): Summary {
       else uncovered++;
     } else {
       covered++;
-      if (hasResults && !s.hasChild) {
+      // Count a pass/fail result for any spec with a direct test — leaves, and
+      // parents that also carry their own tests. A test-less parent has no
+      // direct result of its own (its leaves are counted instead).
+      if (hasResults && s.covered) {
         if (s.result === 'failed') failing++;
         else if (s.result === 'passed') passing++;
         else if (s.result === 'skipped') skipped++;

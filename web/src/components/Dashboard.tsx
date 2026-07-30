@@ -60,11 +60,11 @@ function TreeNode({
   const tests = node.spec.tests ?? [];
   const state = isParent ? subtreeRollup(node, hasResults).state : specState(node.spec, hasResults);
   const count = isParent ? subtreeRollup(node, hasResults).count : 0;
+  const testLabel = tests.length ? `${tests.length} test${tests.length > 1 ? 's' : ''}` : '';
   const rightLabel = isParent
-    ? `${count} spec${count === 1 ? '' : 's'}`
-    : tests.length
-      ? `${tests.length} test${tests.length > 1 ? 's' : ''}`
-      : '—';
+    ? // Parents show their subtree size, and their own tests too when they have any.
+      `${count} spec${count === 1 ? '' : 's'}${testLabel ? ` · ${testLabel}` : ''}`
+    : testLabel || '—';
   return (
     <div className="tree-node" data-testid={`tree-node-${node.spec.id}`}>
       <div className="tree-row">

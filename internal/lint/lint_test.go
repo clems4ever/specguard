@@ -321,3 +321,27 @@ func TestParentCycleFails(t *testing.T) {
 		t.Fatalf("want a parent-cycle finding, got %+v", rep.Findings)
 	}
 }
+
+// spec:spec-hierarchy
+func TestParentMayAlsoCarryItsOwnTest(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/cap.md":       "---\nid: cap\ntitle: A capability\ncovers:\n  - internal/x\n---\nbody\n",
+		"specs/leaf.md":      "---\nid: cap-leaf\ntitle: A leaf\nparent: cap\ncovers:\n  - internal/x\n---\nbody\n",
+		"internal/x.go":      "package x\n",
+		"internal/x_test.go": "package x\n// %SPEC%cap\nfunc TestCap(t *testing.T){}\n// %SPEC%cap-leaf\nfunc TestLeaf(t *testing.T){}\n",
+	})
+	if !rep.OK {
+		t.Fatalf("expected PASS, got: %+v", rep.Findings)
+	}
+	byID := map[string]SpecStatus{}
+	for _, s := range rep.Specs {
+		byID[s.ID] = s
+	}
+	// The parent is both a parent (HasChild) AND directly covered by its own test.
+	if !byID["cap"].HasChild || !byID["cap"].Covered {
+		t.Fatalf("parent should be HasChild and Covered: %+v", byID["cap"])
+	}
+	if len(byID["cap"].Tests) != 1 {
+		t.Fatalf("parent should list its own covering test: %+v", byID["cap"].Tests)
+	}
+}

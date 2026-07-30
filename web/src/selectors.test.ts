@@ -179,6 +179,23 @@ describe('subtreeRollup', () => {
     ]);
     expect(subtreeRollup(forest[0], true).state).toBe('passing');
   });
+
+  it("folds in the parent's OWN failing test even when its children pass", () => {
+    const forest = buildTree([
+      // A parent that ALSO carries its own (failing) test.
+      spec({ id: 'cap', hasChild: true, covered: true, tests: ['cap_test.go'], result: 'failed' }),
+      spec({ id: 'cap-a', parent: 'cap', covered: true, result: 'passed' }),
+    ]);
+    expect(subtreeRollup(forest[0], true).state).toBe('failing');
+  });
+
+  it("ignores a test-less parent's own state (neutral baseline)", () => {
+    const forest = buildTree([
+      spec({ id: 'cap', hasChild: true, covered: false }), // no direct test
+      spec({ id: 'cap-a', parent: 'cap', covered: true, result: 'passed' }),
+    ]);
+    expect(subtreeRollup(forest[0], true).state).toBe('passing');
+  });
 });
 
 describe('summarize with results', () => {
