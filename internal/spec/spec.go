@@ -86,6 +86,71 @@ func Parse(data []byte) (*Spec, error) {
 	return s, nil
 }
 
+// AreaDoc is an optional overview of a group of specs, parsed from a
+// `specs/<area>/_area.md` file. It gives an area a human title and a one-line
+// description so the report can explain what a group of specs is about, instead
+// of showing a bare directory name. Both fields are optional.
+type AreaDoc struct {
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// ParseAreaFile reads an `_area.md` overview. The title comes from optional
+// frontmatter (`title:`); the description is the frontmatter `description:` if
+// present, otherwise the first paragraph of the body. Frontmatter is optional —
+// a plain markdown file is treated entirely as the description.
+func ParseAreaFile(path string) (*AreaDoc, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return ParseArea(data)
+}
+
+// ParseArea parses the contents of an `_area.md` overview file.
+func ParseArea(data []byte) (*AreaDoc, error) {
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
+	a := &AreaDoc{}
+	if strings.HasPrefix(text, "---\n") {
+		fm, body, err := splitFrontmatter(data)
+		if err != nil {
+			return nil, err
+		}
+		fields, err := ParseFields(fm)
+		if err != nil {
+			return nil, err
+		}
+		if v := fields["title"]; len(v) > 0 {
+			a.Title = v[0]
+		}
+		if v := fields["description"]; len(v) > 0 {
+			a.Description = v[0]
+		}
+		if a.Description == "" {
+			a.Description = firstParagraph(body)
+		}
+		return a, nil
+	}
+	a.Description = firstParagraph(text)
+	return a, nil
+}
+
+// firstParagraph returns the leading block of non-blank lines, joined into a
+// single line — the natural one-line summary of a markdown document.
+func firstParagraph(body string) string {
+	var out []string
+	for _, line := range strings.Split(body, "\n") {
+		if strings.TrimSpace(line) == "" {
+			if len(out) > 0 {
+				break
+			}
+			continue
+		}
+		out = append(out, strings.TrimSpace(line))
+	}
+	return strings.Join(out, " ")
+}
+
 // splitFrontmatter returns the text between the opening and closing `---`
 // fences at the top of the document, and the body that follows them.
 func splitFrontmatter(data []byte) (frontmatter, body string, err error) {

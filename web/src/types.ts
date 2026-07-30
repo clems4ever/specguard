@@ -41,11 +41,21 @@ export interface SpecStatus {
   artifacts?: Artifact[] | null; // screenshots captured by covering tests
 }
 
+// AreaInfo is an optional human overview of a spec area, sourced from a
+// `specs/<area>/_area.md` file, so the report can say what a group of specs is
+// about instead of showing a bare directory name.
+export interface AreaInfo {
+  name: string;
+  title?: string;
+  description?: string;
+}
+
 export interface Report {
   specs: SpecStatus[];
   findings: Finding[] | null;
   testFiles: number;
   ok: boolean;
+  areas?: AreaInfo[] | null; // optional per-area overviews
   hasResults?: boolean; // a test run was ingested → show pass/fail
 }
 

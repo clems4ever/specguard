@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Report, ReportMeta, SpecStatus, DiffResponse } from '../types';
+import type { AreaInfo, Report, ReportMeta, SpecStatus, DiffResponse } from '../types';
 import { areaRollup, filterSpecs, groupByArea, specState, summarize } from '../selectors';
 import { StatusBadge } from './StatusBadge';
 import { FindingsPanel } from './FindingsPanel';
@@ -42,11 +42,13 @@ function AreaSection({
   specs,
   onSelect,
   hasResults,
+  info,
 }: {
   area: string;
   specs: SpecStatus[];
   onSelect: (id: string) => void;
   hasResults: boolean;
+  info?: AreaInfo;
 }) {
   const [open, setOpen] = useState(true);
   const roll = areaRollup(specs, hasResults);
@@ -61,12 +63,17 @@ function AreaSection({
         <span className="area-chevron" aria-hidden>
           {open ? '▾' : '▸'}
         </span>
-        <h2 className="area-title">{area}</h2>
+        <h2 className="area-title">{info?.title || area}</h2>
         <span className="area-count muted">
           {roll.total} spec{roll.total === 1 ? '' : 's'}
         </span>
         <StatusBadge state={roll.state} />
       </button>
+      {info?.description && (
+        <p className="area-desc muted" data-testid={`area-desc-${area}`}>
+          {info.description}
+        </p>
+      )}
       {open && (
         <div className="spec-list">
           {specs.map((s) => (
@@ -116,6 +123,10 @@ export function Dashboard({
   const groups = useMemo(
     () => groupByArea(filterSpecs(report.specs ?? [], query)),
     [report.specs, query],
+  );
+  const areaInfo = useMemo(
+    () => new Map((report.areas ?? []).map((a) => [a.name, a])),
+    [report.areas],
   );
   const totalShown = groups.reduce((n, g) => n + g.specs.length, 0);
 
@@ -221,6 +232,7 @@ export function Dashboard({
                   specs={g.specs}
                   onSelect={onSelect}
                   hasResults={summary.hasResults}
+                  info={areaInfo.get(g.area)}
                 />
               ))}
             </>

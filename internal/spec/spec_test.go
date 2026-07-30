@@ -79,3 +79,38 @@ func TestParseFieldsQuotesAndComments(t *testing.T) {
 		t.Fatalf("bad list: %+v", f["tests"])
 	}
 }
+
+// spec:ui-area-overview
+func TestParseAreaFrontmatterAndBody(t *testing.T) {
+	a, err := ParseArea([]byte("---\ntitle: Lint\n---\nThe core rules.\nSecond line.\n\nIgnored paragraph.\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Title != "Lint" {
+		t.Fatalf("title = %q", a.Title)
+	}
+	// The description is the first paragraph, joined to one line.
+	if a.Description != "The core rules. Second line." {
+		t.Fatalf("description = %q", a.Description)
+	}
+}
+
+func TestParseAreaExplicitDescriptionWins(t *testing.T) {
+	a, err := ParseArea([]byte("---\ntitle: UI\ndescription: A short one.\n---\nBody paragraph.\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Description != "A short one." {
+		t.Fatalf("description = %q", a.Description)
+	}
+}
+
+func TestParseAreaNoFrontmatter(t *testing.T) {
+	a, err := ParseArea([]byte("Just prose describing the area.\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Title != "" || a.Description != "Just prose describing the area." {
+		t.Fatalf("got %+v", a)
+	}
+}

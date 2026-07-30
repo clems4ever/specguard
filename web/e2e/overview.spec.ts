@@ -33,6 +33,14 @@ test('the report orients a first-time reader', { tag: '@spec:ui-orientation' }, 
   await expect(intro).toBeHidden();
 });
 
+test('each area can describe itself', { tag: '@spec:ui-area-overview' }, async ({ page }) => {
+  await page.goto('/');
+  // The example's auth area ships a specs/auth/_area.md overview.
+  const desc = page.getByTestId('area-desc-auth');
+  await expect(desc).toBeVisible();
+  await expect(desc).toContainText('Signing in and out');
+});
+
 test('dashboard shows the example project report', { tag: '@spec:ui-dashboard' }, async ({ page }, testInfo) => {
   await page.goto('/');
   const banner = page.getByTestId('status-banner');

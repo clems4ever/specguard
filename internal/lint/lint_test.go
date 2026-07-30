@@ -232,3 +232,26 @@ func TestRefsCaptureFileAndLine(t *testing.T) {
 		t.Errorf("distinct test files = %v, want 2", rep.Specs[0].Tests)
 	}
 }
+
+// spec:ui-area-overview
+func TestAreaOverviewLoadedAndNotASpec(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/ui/dashboard.md":      "---\nid: ui-dashboard\ntitle: Dashboard\ncovers:\n  - web\n---\nbody\n",
+		"specs/ui/_area.md":          "---\ntitle: UI\n---\nThe report's own interface.\n",
+		"web/e2e/x.spec.ts":          "// %SPEC%ui-dashboard\ntest('x', () => {})\n",
+	})
+	if !rep.OK {
+		t.Fatalf("expected PASS, got findings: %+v", rep.Findings)
+	}
+	// The _area.md is not counted as a spec.
+	if len(rep.Specs) != 1 {
+		t.Fatalf("want 1 spec (the _area.md excluded), got %d: %+v", len(rep.Specs), rep.Specs)
+	}
+	// Its overview is loaded, keyed by the directory name.
+	if len(rep.Areas) != 1 || rep.Areas[0].Name != "ui" || rep.Areas[0].Title != "UI" {
+		t.Fatalf("area overview not loaded: %+v", rep.Areas)
+	}
+	if rep.Areas[0].Description != "The report's own interface." {
+		t.Fatalf("description = %q", rep.Areas[0].Description)
+	}
+}
