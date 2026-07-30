@@ -1,6 +1,7 @@
 ---
 id: spec-frontmatter-invalid
 title: Malformed frontmatter is rejected
+parent: spec-model
 covers:
   - internal/spec
 ---

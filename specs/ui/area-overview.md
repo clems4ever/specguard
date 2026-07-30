@@ -1,6 +1,7 @@
 ---
 id: ui-area-overview
 title: Each area can describe itself
+parent: ui-report
 covers:
   - internal/spec/spec.go
   - web/src/components/Dashboard.tsx

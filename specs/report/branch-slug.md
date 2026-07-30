@@ -1,6 +1,7 @@
 ---
 id: report-branch-slug
 title: Branch names slug without collisions
+parent: report-catalog
 covers:
   - internal/report
 ---

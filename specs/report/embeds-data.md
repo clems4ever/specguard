@@ -1,6 +1,7 @@
 ---
 id: report-embeds-data
 title: The report embeds its data
+parent: report-catalog
 covers:
   - internal/report
 ---

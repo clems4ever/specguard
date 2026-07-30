@@ -1,6 +1,7 @@
 ---
 id: spec-hierarchy
 title: Specs derive from one another
+parent: spec-model
 covers:
   - internal/spec/spec.go
   - internal/lint/lint.go

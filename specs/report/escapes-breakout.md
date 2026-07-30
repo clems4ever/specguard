@@ -1,6 +1,7 @@
 ---
 id: report-escapes-breakout
 title: Embedded data can't break out of the script
+parent: report-catalog
 covers:
   - internal/report
 ---

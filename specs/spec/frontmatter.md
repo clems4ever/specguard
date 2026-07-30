@@ -1,6 +1,7 @@
 ---
 id: spec-frontmatter
 title: A spec is parsed from frontmatter
+parent: spec-model
 covers:
   - internal/spec
 ---
