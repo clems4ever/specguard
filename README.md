@@ -97,6 +97,15 @@ is *covered but failing* reads red — the state a static traceability check can
 see. Correlation: Playwright's `@spec:<id>` tag maps a result straight to a spec;
 Go results map via the test function the `// spec:<id>` comment sits above.
 
+Playwright **screenshot attachments** on a tagged test become a **per-spec
+gallery** — visual proof a PM can look at. Pass `-assets` to copy them next to
+the report (this makes it a bundle, `index.html` + `assets/`, rather than one
+file):
+
+```
+specguard report -results playwright.json -assets public/assets -o public/index.html
+```
+
 `.github/workflows/pages.yml` publishes this for `main` to GitHub Pages on every
 push, so anyone can explore the specs at a stable URL without checking out the
 repo. (Enable it via **Settings → Pages → Source = "GitHub Actions"**.)

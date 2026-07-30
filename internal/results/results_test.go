@@ -81,6 +81,33 @@ func TestGoTestParsing(t *testing.T) {
 	}
 }
 
+const playwrightWithShots = `{
+  "suites": [
+    {"specs": [
+      {"title": "logs in", "tags": ["@spec:auth-login"], "tests": [{"results": [{"status": "passed",
+        "attachments": [
+          {"name": "login screen", "contentType": "image/png", "path": "/tmp/a.png"},
+          {"name": "trace", "contentType": "application/zip", "path": "/tmp/t.zip"}
+        ]}]}]}
+    ]}
+  ]
+}`
+
+func TestPlaywrightImageAttachments(t *testing.T) {
+	set, err := Load([]string{writeFile(t, "pw.json", playwrightWithShots)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	arts := set.ArtifactsBySpec["auth-login"]
+	// Only the image is kept; the trace zip is ignored.
+	if len(arts) != 1 {
+		t.Fatalf("artifacts = %+v, want 1 image", arts)
+	}
+	if arts[0].Name != "login screen" || arts[0].Path != "/tmp/a.png" {
+		t.Errorf("artifact = %+v", arts[0])
+	}
+}
+
 func TestFormatAutoDetection(t *testing.T) {
 	if !looksLikePlaywright([]byte(playwrightJSON)) {
 		t.Error("playwright report should be detected")

@@ -4,6 +4,7 @@ import { codeLink, refLabel } from '../links';
 import { StatusBadge } from './StatusBadge';
 import { Markdown } from './Markdown';
 import { FindingsPanel } from './FindingsPanel';
+import { Gallery } from './Gallery';
 
 const RESULT_GLYPH: Record<TestStatus, string> = { passed: '✓', failed: '✗', skipped: '–' };
 
@@ -109,6 +110,10 @@ export function SpecDetail({
             </ul>
           </div>
         )}
+      </section>
+
+      <section className="detail-gallery">
+        <Gallery artifacts={spec.artifacts} />
       </section>
 
       {findings.length > 0 && (

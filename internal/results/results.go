@@ -24,11 +24,19 @@ import (
 type Set struct {
 	BySpec map[string]lint.TestStatus // spec id -> status (Playwright tags)
 	ByTest map[string]lint.TestStatus // Go test function name -> status
+	// ArtifactsBySpec holds image attachments (screenshots) keyed by spec id.
+	// Path is the source filesystem path from the runner; the report command
+	// copies these next to the published report and rewrites Path to a URL.
+	ArtifactsBySpec map[string][]lint.Artifact
 }
 
 // New returns an empty Set.
 func New() *Set {
-	return &Set{BySpec: map[string]lint.TestStatus{}, ByTest: map[string]lint.TestStatus{}}
+	return &Set{
+		BySpec:          map[string]lint.TestStatus{},
+		ByTest:          map[string]lint.TestStatus{},
+		ArtifactsBySpec: map[string][]lint.Artifact{},
+	}
 }
 
 var specToken = regexp.MustCompile(`spec:([A-Za-z0-9._-]+)`)
@@ -131,7 +139,13 @@ type pwTest struct {
 	Results []pwResult `json:"results"`
 }
 type pwResult struct {
-	Status string `json:"status"` // passed | failed | timedOut | skipped | interrupted
+	Status      string         `json:"status"` // passed | failed | timedOut | skipped | interrupted
+	Attachments []pwAttachment `json:"attachments"`
+}
+type pwAttachment struct {
+	Name        string `json:"name"`
+	ContentType string `json:"contentType"`
+	Path        string `json:"path"`
 }
 
 func looksLikePlaywright(data []byte) bool {
@@ -156,8 +170,10 @@ func (set *Set) addPlaywright(data []byte) error {
 	walk = func(s pwSuite) {
 		for _, sp := range s.Specs {
 			st := pwSpecStatus(sp)
+			imgs := pwImages(sp)
 			for _, id := range specIDs(sp.Tags, sp.Title) {
 				set.putSpec(id, st)
+				set.ArtifactsBySpec[id] = append(set.ArtifactsBySpec[id], imgs...)
 			}
 		}
 		for _, child := range s.Suites {
@@ -187,6 +203,22 @@ func pwSpecStatus(sp pwSpec) lint.TestStatus {
 		}
 	}
 	return st
+}
+
+// pwImages collects the image attachments (screenshots) across a spec's test
+// results, keeping their source filesystem path for the report to copy.
+func pwImages(sp pwSpec) []lint.Artifact {
+	var out []lint.Artifact
+	for _, tt := range sp.Tests {
+		for _, r := range tt.Results {
+			for _, a := range r.Attachments {
+				if a.Path != "" && strings.HasPrefix(a.ContentType, "image/") {
+					out = append(out, lint.Artifact{Name: a.Name, Path: a.Path})
+				}
+			}
+		}
+	}
+	return out
 }
 
 // specIDs extracts spec ids from Playwright tags (e.g. "@spec:auth-login") and,
