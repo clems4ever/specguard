@@ -7,6 +7,32 @@ import { test, expect } from '@playwright/test';
 // The tags below trace these tests to specguard's own UI specs, and the
 // attached screenshots are published as those specs' galleries — so the
 // self-report shows the very screens these tests exercise.
+test('the report orients a first-time reader', { tag: '@spec:ui-orientation' }, async ({ page }, testInfo) => {
+  await page.goto('/');
+
+  // A plain-language explanation of the product and a badge legend.
+  const intro = page.getByTestId('intro');
+  await expect(intro).toContainText('specguard');
+  await expect(intro).toContainText('behaviour');
+  await expect(page.getByTestId('intro-legend')).toBeVisible();
+
+  // A table-of-contents to jump between areas.
+  const toc = page.getByTestId('toc');
+  await expect(toc.getByRole('link', { name: /auth/i })).toHaveAttribute('href', '#area-auth');
+
+  // Areas summarise and collapse, so the catalog reads by section not row.
+  const authRow = page.getByTestId('spec-row-auth-login');
+  await expect(authRow).toBeVisible();
+  await page.getByTestId('area-toggle-auth').click();
+  await expect(authRow).toBeHidden();
+
+  await testInfo.attach('orientation', { body: await page.screenshot(), contentType: 'image/png' });
+
+  // The intro can be dismissed once understood.
+  await page.getByTestId('intro-dismiss').click();
+  await expect(intro).toBeHidden();
+});
+
 test('dashboard shows the example project report', { tag: '@spec:ui-dashboard' }, async ({ page }, testInfo) => {
   await page.goto('/');
   const banner = page.getByTestId('status-banner');
