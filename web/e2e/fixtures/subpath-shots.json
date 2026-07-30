@@ -1,0 +1,28 @@
+{
+  "suites": [
+    {
+      "specs": [
+        {
+          "title": "logs in",
+          "tags": ["@spec:auth-login"],
+          "tests": [
+            {
+              "results": [
+                {
+                  "status": "passed",
+                  "attachments": [
+                    {
+                      "name": "login screen",
+                      "contentType": "image/png",
+                      "path": "e2e/fixtures/login.png"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

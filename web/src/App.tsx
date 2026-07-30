@@ -4,10 +4,11 @@ import { fetchReport, fetchDiff } from './api';
 import { embeddedReport, embeddedMeta } from './embedded';
 import { Dashboard } from './components/Dashboard';
 import { SpecDetail } from './components/SpecDetail';
+import { basePath } from './base';
 
-/** Read the selected spec id from the path `/spec/<id>`. */
+/** Read the selected spec id from a `<base>spec/<id>` path, base-prefix aware. */
 function specIdFromPath(path: string): string | null {
-  const m = path.match(/^\/spec\/([^/]+)$/);
+  const m = path.match(/\/spec\/([^/]+)\/?$/);
   return m ? decodeURIComponent(m[1]) : null;
 }
 
@@ -97,14 +98,14 @@ export function App() {
 
   const select = useCallback(
     (id: string) => {
-      navigate(`/spec/${encodeURIComponent(id)}`);
+      navigate(`${basePath()}spec/${encodeURIComponent(id)}`);
       setSelectedId(id);
     },
     [navigate],
   );
 
   const back = useCallback(() => {
-    navigate('/');
+    navigate(basePath());
     setSelectedId(null);
   }, [navigate]);
 

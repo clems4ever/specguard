@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Artifact } from '../types';
+import { assetUrl } from '../base';
 
 // Gallery shows the screenshots a test captured for a spec — the visual proof a
 // PM can look at. Thumbnails open a lightbox; Escape or a click closes it. It
@@ -30,7 +31,7 @@ export function Gallery({ artifacts }: { artifacts?: Artifact[] | null }) {
             onClick={() => setOpen(i)}
             title={a.name || `screenshot ${i + 1}`}
           >
-            <img src={a.path} alt={a.name || `screenshot ${i + 1}`} loading="lazy" />
+            <img src={assetUrl(a.path)} alt={a.name || `screenshot ${i + 1}`} loading="lazy" />
           </button>
         ))}
       </div>
@@ -43,7 +44,7 @@ export function Gallery({ artifacts }: { artifacts?: Artifact[] | null }) {
           aria-modal="true"
           onClick={() => setOpen(null)}
         >
-          <img src={shots[open].path} alt={shots[open].name || 'screenshot'} />
+          <img src={assetUrl(shots[open].path)} alt={shots[open].name || 'screenshot'} />
           <div className="lightbox-caption">{shots[open].name}</div>
         </div>
       )}
