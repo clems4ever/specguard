@@ -46,6 +46,15 @@ jobs:
       - name: Build
         working-directory: web
         run: npm run build
+      - name: Embedded report template is up to date
+        working-directory: web
+        run: |
+          npm run build:single
+          if ! diff -q dist-single/index.html ../internal/report/assets/index.html >/dev/null; then
+            echo "::error::internal/report/assets/index.html is stale."
+            echo "Regenerate it: (cd web && npm run build:single) && cp web/dist-single/index.html internal/report/assets/index.html"
+            exit 1
+          fi
       - name: Install Playwright browser
         working-directory: web
         run: npx playwright install --with-deps chromium

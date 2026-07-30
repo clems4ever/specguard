@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { Report, SpecStatus, DiffResponse } from '../types';
+import type { Report, ReportMeta, SpecStatus, DiffResponse } from '../types';
 import { filterSpecs, groupByArea, specState, summarize } from '../selectors';
 import { StatusBadge } from './StatusBadge';
 import { FindingsPanel } from './FindingsPanel';
 import { ChangesView } from './ChangesView';
+import { Stamp } from './Stamp';
 
 function SpecRow({ spec, onSelect }: { spec: SpecStatus; onSelect: (id: string) => void }) {
   const tests = spec.tests ?? [];
@@ -38,20 +39,22 @@ export function Dashboard({
   report,
   onSelect,
   onRefresh,
-  refreshing,
+  refreshing = false,
   changedMode = false,
   onToggleChanged,
   diff = null,
   diffLoading = false,
+  meta = null,
 }: {
   report: Report;
   onSelect: (id: string) => void;
-  onRefresh: () => void;
-  refreshing: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   changedMode?: boolean;
   onToggleChanged?: () => void;
   diff?: DiffResponse | null;
   diffLoading?: boolean;
+  meta?: ReportMeta | null;
 }) {
   const [query, setQuery] = useState('');
   const summary = useMemo(() => summarize(report), [report]);
@@ -66,6 +69,7 @@ export function Dashboard({
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">◉</span> specguard
+          <Stamp meta={meta} />
         </div>
         <div className="topbar-actions">
           {onToggleChanged && (
@@ -79,9 +83,11 @@ export function Dashboard({
               {changedMode ? 'All specs' : 'Changed only'}
             </button>
           )}
-          <button className="refresh" onClick={onRefresh} disabled={refreshing} data-testid="refresh">
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
+          {onRefresh && (
+            <button className="refresh" onClick={onRefresh} disabled={refreshing} data-testid="refresh">
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+          )}
         </div>
       </header>
 

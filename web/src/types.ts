@@ -28,6 +28,17 @@ export interface Report {
   ok: boolean;
 }
 
+// ReportMeta stamps a generated static report so a viewer knows exactly what
+// they are looking at (which branch, which commit, how fresh). `specguard
+// report` injects it as window.__SPECGUARD_META__.
+export interface ReportMeta {
+  repo?: string;
+  branch?: string;
+  commit?: string;
+  commitShort?: string;
+  generatedAt?: string; // RFC3339
+}
+
 // Mirrors internal/diff (the "what changed" delta vs a base git ref).
 export type ChangeKind =
   | 'added'
