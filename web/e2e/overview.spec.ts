@@ -4,7 +4,10 @@ import { test, expect } from '@playwright/test';
 // report for the bundled example project (8 specs, one draft → PASS with one
 // warning). No mocking — this is the full stack end to end.
 
-test('dashboard shows the example project report', async ({ page }) => {
+// The tags below trace these tests to specguard's own UI specs, and the
+// attached screenshots are published as those specs' galleries — so the
+// self-report shows the very screens these tests exercise.
+test('dashboard shows the example project report', { tag: '@spec:ui-dashboard' }, async ({ page }, testInfo) => {
   await page.goto('/');
   const banner = page.getByTestId('status-banner');
   await expect(banner).toContainText('PASS');
@@ -24,19 +27,25 @@ test('dashboard shows the example project report', async ({ page }) => {
   const draftRow = page.getByTestId('spec-row-sharing-permissions');
   await expect(draftRow.getByTestId('badge-draft')).toBeVisible();
   await expect(page.getByTestId('finding-uncovered-draft')).toBeVisible();
+
+  await testInfo.attach('dashboard', { body: await page.screenshot(), contentType: 'image/png' });
 });
 
-test('search filters the spec list', async ({ page }) => {
+test('search filters the spec list', { tag: '@spec:ui-search' }, async ({ page }, testInfo) => {
   await page.goto('/');
   await page.getByTestId('search').fill('login');
   await expect(page.getByTestId('spec-row-auth-login')).toBeVisible();
   await expect(page.getByTestId('spec-row-tasks-create')).toBeHidden();
+  await testInfo.attach('search — filtered to “login”', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
 
   await page.getByTestId('search').fill('nothing-xyz');
   await expect(page.getByTestId('no-match')).toBeVisible();
 });
 
-test('opens a spec detail with rendered body and covering tests', async ({ page }) => {
+test('opens a spec detail with rendered body and covering tests', { tag: '@spec:ui-spec-detail' }, async ({ page }, testInfo) => {
   await page.goto('/');
   await page.getByTestId('spec-row-auth-login').click();
 
@@ -49,6 +58,8 @@ test('opens a spec detail with rendered body and covering tests', async ({ page 
   // Covering tests listed.
   await expect(page.getByTestId('test-list')).toContainText('server/auth_test.go');
   await expect(page.getByTestId('test-list')).toContainText('web/e2e/auth.spec.ts');
+
+  await testInfo.attach('spec detail', { body: await page.screenshot(), contentType: 'image/png' });
 
   await page.getByTestId('back').click();
   await expect(page.getByTestId('status-banner')).toBeVisible();

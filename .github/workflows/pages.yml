@@ -55,18 +55,27 @@ jobs:
       - name: Run specguard's own test suite (real pass/fail on its own specs)
         run: go test -json ./... > "$RUNNER_TEMP/go-results.json" || true
 
+      - name: Run the UI e2e (screenshots of specguard's own report → galleries)
+        working-directory: web
+        run: |
+          npx playwright install --with-deps chromium
+          # The `@spec:ui-*` tests attach screenshots of specguard's own UI; the
+          # JSON report carries them (inline) for the galleries.
+          CI=1 npx playwright test --reporter=json > "$RUNNER_TEMP/e2e.json" || true
+
       - name: Generate specguard's own spec report (dogfood)
         run: |
           mkdir -p public
           # specguard reports on ITSELF: specs/ pinned to the Go tests under
-          # internal/, with each spec's real pass/fail from the run above and
-          # deep links to the covering test on GitHub.
+          # internal/ and the UI e2e under web/e2e — each spec's real pass/fail,
+          # deep links to the covering test, and screenshots of its own screens.
           ./specguard report -C . \
             -web web/dist-single/index.html \
             -branch "${{ github.ref_name }}" \
             -commit "${{ github.sha }}" \
             -repo "${{ github.repository }}" \
-            -results "$RUNNER_TEMP/go-results.json" \
+            -results "$RUNNER_TEMP/go-results.json,$RUNNER_TEMP/e2e.json" \
+            -assets public/assets -assets-base assets \
             -o public/index.html
           # Serve the same app for any path so deep links (/spec/<id>) resolve
           # on a hard refresh — GitHub Pages returns 404.html for unknown paths.

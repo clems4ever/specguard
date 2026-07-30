@@ -10,6 +10,7 @@ package results
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -146,6 +147,43 @@ type pwAttachment struct {
 	Name        string `json:"name"`
 	ContentType string `json:"contentType"`
 	Path        string `json:"path"`
+	Body        string `json:"body"` // base64, when Playwright inlines the attachment
+}
+
+// source returns a filesystem path to the attachment's bytes. A `path`
+// attachment is used directly; a base64 `body` (Playwright's default for a
+// buffer attachment) is decoded to a temp file so the report can copy it.
+func (a pwAttachment) source() (string, bool) {
+	if a.Path != "" {
+		return a.Path, true
+	}
+	if a.Body == "" {
+		return "", false
+	}
+	raw, err := base64.StdEncoding.DecodeString(a.Body)
+	if err != nil {
+		return "", false
+	}
+	f, err := os.CreateTemp("", "specguard-shot-*"+extFor(a.ContentType))
+	if err != nil {
+		return "", false
+	}
+	defer f.Close()
+	if _, err := f.Write(raw); err != nil {
+		return "", false
+	}
+	return f.Name(), true
+}
+
+func extFor(contentType string) string {
+	switch contentType {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/webp":
+		return ".webp"
+	default:
+		return ".png"
+	}
 }
 
 func looksLikePlaywright(data []byte) bool {
@@ -212,8 +250,11 @@ func pwImages(sp pwSpec) []lint.Artifact {
 	for _, tt := range sp.Tests {
 		for _, r := range tt.Results {
 			for _, a := range r.Attachments {
-				if a.Path != "" && strings.HasPrefix(a.ContentType, "image/") {
-					out = append(out, lint.Artifact{Name: a.Name, Path: a.Path})
+				if !strings.HasPrefix(a.ContentType, "image/") {
+					continue
+				}
+				if src, ok := a.source(); ok {
+					out = append(out, lint.Artifact{Name: a.Name, Path: src})
 				}
 			}
 		}

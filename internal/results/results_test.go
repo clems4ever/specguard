@@ -1,6 +1,7 @@
 package results
 
 import (
+	"encoding/base64"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,6 +115,28 @@ func TestPlaywrightImageAttachments(t *testing.T) {
 	}
 	if arts[0].Name != "login screen" || arts[0].Path != "/tmp/a.png" {
 		t.Errorf("artifact = %+v", arts[0])
+	}
+}
+
+func TestPlaywrightBase64Attachment(t *testing.T) {
+	// Playwright inlines a buffer attachment as base64 `body` (no `path`); the
+	// bytes must be decoded to a real file the report can copy.
+	png := base64.StdEncoding.EncodeToString([]byte("PNGDATA"))
+	doc := `{"suites":[{"specs":[
+	  {"title":"dash","tags":["@%SPEC%ui-dashboard"],"tests":[{"results":[{"status":"passed",
+	    "attachments":[{"name":"dashboard","contentType":"image/png","body":"` + png + `"}]}]}]}
+	]}]}`
+	set, err := Load([]string{writeFile(t, "pw.json", doc)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	arts := set.ArtifactsBySpec["ui-dashboard"]
+	if len(arts) != 1 {
+		t.Fatalf("artifacts = %+v, want 1 decoded image", arts)
+	}
+	got, err := os.ReadFile(arts[0].Path)
+	if err != nil || string(got) != "PNGDATA" {
+		t.Fatalf("decoded file wrong: b=%q err=%v (path %s)", got, err, arts[0].Path)
 	}
 }
 
