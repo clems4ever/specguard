@@ -1,0 +1,5 @@
+# Example project linted by `specguard serve -C example`.
+specsDir: specs
+tests:
+  - "server/**/*_test.go"
+  - "web/e2e/**/*.spec.ts"

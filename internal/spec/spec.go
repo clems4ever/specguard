@@ -21,7 +21,16 @@ type Spec struct {
 	Status string   `json:"status,omitempty"`
 	Covers []string `json:"covers,omitempty"`
 	Path   string   `json:"path"`
+	// Body is the markdown that follows the frontmatter, verbatim. specguard
+	// never interprets it; it is carried so a UI can render the prose.
+	Body string `json:"body,omitempty"`
 }
+
+// Valid spec statuses. An empty status is treated as StatusActive.
+const (
+	StatusActive = "active"
+	StatusDraft  = "draft"
+)
 
 // idPattern constrains ids to the characters that also survive being embedded
 // in a `spec:<id>` tag inside Go comments and Playwright tags, so a reference
@@ -44,7 +53,7 @@ func ParseFile(path string) (*Spec, error) {
 
 // Parse parses the frontmatter of a spec file's contents.
 func Parse(data []byte) (*Spec, error) {
-	fm, err := splitFrontmatter(data)
+	fm, body, err := splitFrontmatter(data)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +61,7 @@ func Parse(data []byte) (*Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Spec{Covers: fields["covers"]}
+	s := &Spec{Covers: fields["covers"], Body: body}
 	if v := fields["id"]; len(v) > 0 {
 		s.ID = v[0]
 	}
@@ -71,26 +80,28 @@ func Parse(data []byte) (*Spec, error) {
 	if s.Title == "" {
 		return nil, fmt.Errorf("frontmatter is missing required field 'title'")
 	}
+	if s.Status != "" && s.Status != StatusActive && s.Status != StatusDraft {
+		return nil, fmt.Errorf("status %q must be %q or %q", s.Status, StatusActive, StatusDraft)
+	}
 	return s, nil
 }
 
 // splitFrontmatter returns the text between the opening and closing `---`
-// fences at the top of the document.
-func splitFrontmatter(data []byte) (string, error) {
+// fences at the top of the document, and the body that follows them.
+func splitFrontmatter(data []byte) (frontmatter, body string, err error) {
 	s := strings.ReplaceAll(string(data), "\r\n", "\n")
 	if !strings.HasPrefix(s, "---\n") {
-		return "", fmt.Errorf("file must start with a '---' frontmatter fence")
+		return "", "", fmt.Errorf("file must start with a '---' frontmatter fence")
 	}
 	rest := s[len("---\n"):]
 	// The closing fence is a line that is exactly "---".
 	if i := strings.Index(rest, "\n---"); i >= 0 {
-		// Ensure the match is a whole line ("---" followed by newline or EOF).
 		tail := rest[i+len("\n---"):]
 		if tail == "" || strings.HasPrefix(tail, "\n") {
-			return rest[:i], nil
+			return rest[:i], strings.TrimLeft(tail, "\n"), nil
 		}
 	}
-	return "", fmt.Errorf("unterminated frontmatter (missing closing '---')")
+	return "", "", fmt.Errorf("unterminated frontmatter (missing closing '---')")
 }
 
 // ParseFields parses the constrained YAML subset used by both spec frontmatter

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-single/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.e2e-specguard
+.e2e-report.html
+.e2e-report-results.html
+.e2e-go-results.json
+.e2e-report-artifacts.html
+.e2e-shots.json
+.e2e-assets/

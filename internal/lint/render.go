@@ -21,12 +21,19 @@ func Render(w io.Writer, rep *Report, color bool) {
 	// Per-spec coverage table.
 	for _, s := range rep.Specs {
 		glyph := green("✓")
-		if !s.Covered {
+		switch {
+		case !s.Covered && s.Draft:
+			glyph = yellow("◦")
+		case !s.Covered:
 			glyph = red("✗")
-		} else if !s.CoversOK {
+		case !s.CoversOK:
 			glyph = yellow("!")
 		}
-		fmt.Fprintf(w, "  %s  %-28s %s\n", glyph, s.ID, s.Title)
+		title := s.Title
+		if s.Draft {
+			title += dim(" (draft)")
+		}
+		fmt.Fprintf(w, "  %s  %-28s %s\n", glyph, s.ID, title)
 		if s.Covered {
 			fmt.Fprintf(w, "        %s\n", dim(fmt.Sprintf("%d test(s): %s", len(s.Tests), strings.Join(s.Tests, ", "))))
 		} else {

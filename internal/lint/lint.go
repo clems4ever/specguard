@@ -78,16 +78,57 @@ type Finding struct {
 	Message  string   `json:"message"`
 }
 
+// TestStatus is the outcome of a test run, set by `specguard report --results`.
+// The empty value means "no result ingested".
+type TestStatus string
+
+const (
+	StatusPassed  TestStatus = "passed"
+	StatusFailed  TestStatus = "failed"
+	StatusSkipped TestStatus = "skipped"
+)
+
+// Ref is one `spec:<id>` reference: the test file and the 1-based line it sits
+// on, so the report can link straight to the covering test on GitHub.
+type Ref struct {
+	File string `json:"file"`
+	Line int    `json:"line"`
+	// Test is the Go test function this reference sits above (e.g. "TestLogin"),
+	// used to correlate `go test -json` results. Empty for non-Go references.
+	Test string `json:"test,omitempty"`
+	// Status is this test's outcome, filled in when results are ingested.
+	Status TestStatus `json:"status,omitempty"`
+}
+
+// Artifact is a visual proof captured by a test (e.g. a Playwright screenshot)
+// and attached to a spec, so a reader can SEE the behaviour, not just read it.
+// Path is the URL the report loads it from.
+type Artifact struct {
+	Name string `json:"name,omitempty"`
+	Path string `json:"path"`
+}
+
 // SpecStatus is the resolved traceability state of one spec.
 type SpecStatus struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Status   string   `json:"status,omitempty"`
-	Path     string   `json:"path"`
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Status string `json:"status,omitempty"`
+	Path   string `json:"path"`
+	Body   string `json:"body,omitempty"`
+	// Tests are the distinct test files that reference this spec (kept for the
+	// count); Refs are the precise (file, line) locations, for deep links.
 	Tests    []string `json:"tests"`
+	Refs     []Ref    `json:"refs,omitempty"`
 	Covers   []string `json:"covers,omitempty"`
 	Covered  bool     `json:"covered"`
 	CoversOK bool     `json:"coversOk"`
+	Draft    bool     `json:"draft"`
+	// Result is the aggregate outcome of this spec's covering tests, set when
+	// results are ingested (failed if any covering test failed).
+	Result TestStatus `json:"result,omitempty"`
+	// Artifacts are visual proofs (screenshots) captured by covering tests, set
+	// by `specguard report -assets` when a run carries attachments.
+	Artifacts []Artifact `json:"artifacts,omitempty"`
 }
 
 // Report is the full result of a run.
@@ -96,11 +137,18 @@ type Report struct {
 	Findings  []Finding    `json:"findings"`
 	TestFiles int          `json:"testFiles"`
 	OK        bool         `json:"ok"`
+	// HasResults is true when a test run was ingested, so the UI knows to show
+	// pass/fail state rather than coverage alone.
+	HasResults bool `json:"hasResults,omitempty"`
 }
 
 // refPattern matches a `spec:<id>` reference embedded in a test file — a
 // Playwright tag (`@spec:skills-edit`) or a Go comment (`// spec:skills-edit`).
 var refPattern = regexp.MustCompile(`spec:([A-Za-z0-9._-]+)`)
+
+// funcPattern matches a Go test/benchmark/example function declaration, so a
+// `// spec:x` comment can be associated with the function it sits above.
+var funcPattern = regexp.MustCompile(`^func ((?:Test|Benchmark|Example)[A-Za-z0-9_]*)\s*\(`)
 
 var skipDirs = map[string]bool{
 	".git": true, "node_modules": true, "vendor": true,
@@ -125,7 +173,7 @@ func Run(cfg Config) (*Report, error) {
 
 	// 2. Walk the tree once: scan test files for references, and collect all
 	// file paths so `covers` entries can be validated.
-	refs := map[string][]string{} // spec id -> referencing test files
+	refs := map[string][]Ref{} // spec id -> (file, line) references
 	var allFiles []string
 	specsPrefix := filepath.ToSlash(filepath.Clean(cfg.SpecsDir)) + "/"
 	walkRoot := cfg.Root
@@ -160,16 +208,25 @@ func Run(cfg Config) (*Report, error) {
 		if err != nil {
 			return err
 		}
-		for _, m := range refPattern.FindAllStringSubmatch(string(data), -1) {
-			id := m[1]
-			if _, ok := byID[id]; !ok {
-				rep.Findings = append(rep.Findings, Finding{
-					Severity: Error, Rule: "undefined-reference", Spec: id, File: rel,
-					Message: "references spec:" + id + " but no such spec is defined",
-				})
-				continue
+		// Scan line by line so each reference carries its 1-based line number.
+		lines := strings.Split(string(data), "\n")
+		isGo := strings.HasSuffix(rel, "_test.go")
+		for i, line := range lines {
+			for _, m := range refPattern.FindAllStringSubmatch(line, -1) {
+				id := m[1]
+				if _, ok := byID[id]; !ok {
+					rep.Findings = append(rep.Findings, Finding{
+						Severity: Error, Rule: "undefined-reference", Spec: id, File: rel,
+						Message: "references spec:" + id + " but no such spec is defined",
+					})
+					continue
+				}
+				ref := Ref{File: rel, Line: i + 1}
+				if isGo {
+					ref.Test = nextTestFunc(lines, i)
+				}
+				refs[id] = append(refs[id], ref)
 			}
-			refs[id] = appendUnique(refs[id], rel)
 		}
 		return nil
 	})
@@ -179,16 +236,29 @@ func Run(cfg Config) (*Report, error) {
 
 	// 3. Resolve each spec's status.
 	for _, s := range specs {
+		draft := s.Status == spec.StatusDraft
+		specRefs := sortedRefs(refs[s.ID])
 		st := SpecStatus{
-			ID: s.ID, Title: s.Title, Status: s.Status, Path: relPath(walkRoot, s.Path),
-			Covers: s.Covers, Tests: refs[s.ID], Covered: len(refs[s.ID]) > 0, CoversOK: true,
+			// s.Path is already relative to cfg.Root (set in loadSpecs).
+			ID: s.ID, Title: s.Title, Status: s.Status, Path: s.Path,
+			Body: s.Body, Covers: s.Covers,
+			Tests: distinctFiles(specRefs), Refs: specRefs,
+			Covered: len(specRefs) > 0, CoversOK: true, Draft: draft,
 		}
-		sort.Strings(st.Tests)
 		if !st.Covered {
-			rep.Findings = append(rep.Findings, Finding{
-				Severity: Error, Rule: "uncovered-spec", Spec: s.ID, File: st.Path,
-				Message: "no test references spec:" + s.ID,
-			})
+			// A draft spec is allowed to have no test yet — it is a planned
+			// behaviour, reported as a warning rather than a build failure.
+			if draft {
+				rep.Findings = append(rep.Findings, Finding{
+					Severity: Warning, Rule: "uncovered-draft", Spec: s.ID, File: st.Path,
+					Message: "draft spec has no covering test yet",
+				})
+			} else {
+				rep.Findings = append(rep.Findings, Finding{
+					Severity: Error, Rule: "uncovered-spec", Spec: s.ID, File: st.Path,
+					Message: "no test references spec:" + s.ID,
+				})
+			}
 		}
 		for _, entry := range s.Covers {
 			if !anyFileMatches(entry, allFiles) {
@@ -265,13 +335,44 @@ func anyFileMatches(entry string, files []string) bool {
 	return false
 }
 
-func appendUnique(xs []string, x string) []string {
-	for _, e := range xs {
-		if e == x {
-			return xs
+// nextTestFunc returns the name of the first Go test function at or below line
+// index `from` (0-based), i.e. the function a `// spec:x` comment sits above.
+// Empty if none follows within the file.
+func nextTestFunc(lines []string, from int) string {
+	for i := from; i < len(lines); i++ {
+		if m := funcPattern.FindStringSubmatch(lines[i]); m != nil {
+			return m[1]
 		}
 	}
-	return append(xs, x)
+	return ""
+}
+
+// sortedRefs returns refs ordered by file then line, so link lists are stable.
+func sortedRefs(refs []Ref) []Ref {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := append([]Ref(nil), refs...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].File != out[j].File {
+			return out[i].File < out[j].File
+		}
+		return out[i].Line < out[j].Line
+	})
+	return out
+}
+
+// distinctFiles returns the unique test files among refs, in order.
+func distinctFiles(refs []Ref) []string {
+	var files []string
+	seen := map[string]bool{}
+	for _, r := range refs {
+		if !seen[r.File] {
+			seen[r.File] = true
+			files = append(files, r.File)
+		}
+	}
+	return files
 }
 
 func relPath(root, path string) string {

@@ -61,6 +61,11 @@ func matchesAny(globs []glob, path string) bool {
 	return false
 }
 
+// CoversMatch reports whether a spec `covers` entry designates the given file.
+// It is the exported form of coversMatch so other packages (e.g. diff) can tell
+// whether a changed file falls under a spec's governed paths.
+func CoversMatch(entry, file string) bool { return coversMatch(entry, file) }
+
 // coversMatch reports whether a spec's `covers` entry designates the given
 // file. A plain path matches the file itself or anything beneath it (so a
 // directory like `internal/skill` covers every file under it); an entry with

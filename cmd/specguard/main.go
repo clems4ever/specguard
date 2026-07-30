@@ -2,39 +2,76 @@
 // referenced by at least one test, and every `spec:<id>` reference in a test
 // must resolve to a defined spec. It exits non-zero when the check fails, so it
 // can gate a CI build.
+//
+// Usage:
+//
+//	specguard [flags]         run the check and print a report (exit 1 on failure)
+//	specguard serve [flags]   serve the report over HTTP for the web UI
+//	specguard diff [flags]    show only the specs a change touched (vs a base ref)
+//	specguard report [flags]  write a self-contained, browsable HTML report
 package main
 
 import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/clems4ever/specguard/internal/diff"
 	"github.com/clems4ever/specguard/internal/lint"
+	"github.com/clems4ever/specguard/internal/report"
+	"github.com/clems4ever/specguard/internal/results"
+	"github.com/clems4ever/specguard/internal/server"
 )
 
 func main() {
-	var (
-		root       = flag.String("C", ".", "directory to run in (repo root)")
-		configPath = flag.String("config", "", "config file (default: <root>/.specguard.yml)")
-		asJSON     = flag.Bool("json", false, "emit the report as JSON (for tooling / UI)")
-		strict     = flag.Bool("strict", false, "treat warnings as errors")
-		noColor    = flag.Bool("no-color", false, "disable ANSI color")
-	)
-	flag.Parse()
-
-	cfgFile := *configPath
-	if cfgFile == "" {
-		cfgFile = filepath.Join(*root, ".specguard.yml")
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "serve":
+			serveCmd(os.Args[2:])
+			return
+		case "diff":
+			diffCmd(os.Args[2:])
+			return
+		case "report":
+			reportCmd(os.Args[2:])
+			return
+		}
 	}
-	cfg, err := lint.LoadConfig(*root, cfgFile)
+	lintCmd(os.Args[1:])
+}
+
+// loadConfig resolves the config file and builds the lint config.
+func loadConfig(root, configPath string, strict bool) lint.Config {
+	cfgFile := configPath
+	if cfgFile == "" {
+		cfgFile = filepath.Join(root, ".specguard.yml")
+	}
+	cfg, err := lint.LoadConfig(root, cfgFile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "specguard: config:", err)
 		os.Exit(2)
 	}
-	cfg.Strict = *strict
+	cfg.Strict = strict
+	return cfg
+}
 
+func lintCmd(args []string) {
+	fs := flag.NewFlagSet("specguard", flag.ExitOnError)
+	var (
+		root       = fs.String("C", ".", "directory to run in (repo root)")
+		configPath = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		asJSON     = fs.Bool("json", false, "emit the report as JSON (for tooling / UI)")
+		strict     = fs.Bool("strict", false, "treat warnings as errors")
+		noColor    = fs.Bool("no-color", false, "disable ANSI color")
+	)
+	_ = fs.Parse(args)
+
+	cfg := loadConfig(*root, *configPath, *strict)
 	rep, err := lint.Run(cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "specguard:", err)
@@ -52,6 +89,209 @@ func main() {
 
 	if !rep.OK {
 		os.Exit(1)
+	}
+}
+
+func serveCmd(args []string) {
+	fs := flag.NewFlagSet("specguard serve", flag.ExitOnError)
+	var (
+		root       = fs.String("C", ".", "directory to lint (repo root)")
+		configPath = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		strict     = fs.Bool("strict", false, "treat warnings as errors")
+		addr       = fs.String("addr", ":8137", "listen address")
+		webDir     = fs.String("web", "", "directory of built UI assets to serve (optional)")
+		diffBase   = fs.String("diff-base", "HEAD", "git ref the 'Changed only' view diffs against (empty disables)")
+	)
+	_ = fs.Parse(args)
+
+	cfg := loadConfig(*root, *configPath, *strict)
+	srv := server.New(cfg, server.ResolveWebDir(*webDir))
+	if *diffBase != "" {
+		configName := ".specguard.yml"
+		if *configPath != "" {
+			configName = filepath.Base(*configPath)
+		}
+		srv.EnableDiff(*diffBase, configName)
+	}
+	fmt.Fprintf(os.Stderr, "specguard: serving report for %s on http://localhost%s/api/report\n", cfg.Root, *addr)
+	if err := server.ListenAndServe(*addr, srv.Handler()); err != nil {
+		fmt.Fprintln(os.Stderr, "specguard: serve:", err)
+		os.Exit(2)
+	}
+}
+
+func diffCmd(args []string) {
+	fs := flag.NewFlagSet("specguard diff", flag.ExitOnError)
+	var (
+		root             = fs.String("C", ".", "directory to run in (repo root)")
+		configPath       = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		strict           = fs.Bool("strict", false, "treat warnings as errors")
+		base             = fs.String("base", "origin/main", "git ref to diff against")
+		format           = fs.String("format", "text", "output format: text | markdown | json")
+		failOnRegression = fs.Bool("fail-on-regression", false, "exit non-zero if a spec lost coverage or arrived uncovered")
+	)
+	_ = fs.Parse(args)
+
+	if !diff.HasGit(*root) {
+		fmt.Fprintln(os.Stderr, "specguard diff: not a git repository (diff needs git):", *root)
+		os.Exit(2)
+	}
+
+	cfg := loadConfig(*root, *configPath, *strict)
+	head, err := lint.Run(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard diff: head:", err)
+		os.Exit(2)
+	}
+	configName := ".specguard.yml"
+	if *configPath != "" {
+		configName = filepath.Base(*configPath)
+	}
+	baseRep, err := diff.BaseReport(*root, *base, configName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard diff: base:", err)
+		os.Exit(2)
+	}
+	changed, err := diff.ChangedFiles(*root, *base)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard diff: changed files:", err)
+		os.Exit(2)
+	}
+
+	d := diff.Compute(baseRep, head, changed)
+	d.Base = *base
+
+	switch *format {
+	case "json":
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(d)
+	case "markdown", "md":
+		diff.RenderMarkdown(os.Stdout, d, *base)
+	default:
+		diff.RenderText(os.Stdout, d, *base)
+	}
+
+	if *failOnRegression && d.Regressions > 0 {
+		os.Exit(1)
+	}
+}
+
+// reportCmd writes a self-contained, browsable HTML report (the whole spec
+// catalog with client-side search) — the artifact you publish per branch so
+// anyone can explore the specs without running a server.
+func reportCmd(args []string) {
+	fs := flag.NewFlagSet("specguard report", flag.ExitOnError)
+	var (
+		root       = fs.String("C", ".", "directory to run in (repo root)")
+		configPath = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		strict     = fs.Bool("strict", false, "treat warnings as errors")
+		out        = fs.String("o", "", "output file (default: stdout)")
+		format     = fs.String("format", "html", "output format: html | json")
+		webFile    = fs.String("web", "", "override the embedded UI template with this built single-file HTML")
+		branch     = fs.String("branch", "", "branch name to stamp (default: detected from git)")
+		commit     = fs.String("commit", "", "commit SHA to stamp (default: detected from git)")
+		repo       = fs.String("repo", "", "repository slug to stamp (e.g. owner/name)")
+		resultsArg = fs.String("results", "", "comma-separated test result files (Playwright JSON / `go test -json`) to show pass/fail")
+		assetsDir  = fs.String("assets", "", "directory to copy test screenshots into (enables per-spec galleries; makes the report a bundle, not one file)")
+		assetsBase = fs.String("assets-base", "assets", "URL prefix the report loads copied screenshots from")
+	)
+	_ = fs.Parse(args)
+
+	cfg := loadConfig(*root, *configPath, *strict)
+	rep, err := lint.Run(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard report:", err)
+		os.Exit(2)
+	}
+
+	// Overlay a test run, if provided, so the report shows pass/fail per spec.
+	if *resultsArg != "" {
+		set, err := results.Load(strings.Split(*resultsArg, ","))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "specguard report:", err)
+			os.Exit(2)
+		}
+		set.Apply(rep)
+		// Publish any screenshots the run captured, as per-spec galleries.
+		if *assetsDir != "" {
+			if _, err := report.WriteArtifacts(rep, set.ArtifactsBySpec, *assetsDir, *assetsBase); err != nil {
+				fmt.Fprintln(os.Stderr, "specguard report: artifacts:", err)
+				os.Exit(2)
+			}
+		}
+	}
+
+	// Open the output sink up front, so we don't run a build only to fail on a
+	// bad path.
+	w := io.Writer(os.Stdout)
+	if *out != "" {
+		f, err := os.Create(*out)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "specguard report:", err)
+			os.Exit(2)
+		}
+		defer f.Close()
+		w = f
+	}
+
+	if *format == "json" {
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(rep); err != nil {
+			fmt.Fprintln(os.Stderr, "specguard report:", err)
+			os.Exit(2)
+		}
+		return
+	}
+
+	// Resolve the UI template: an explicit freshly-built file wins, else the
+	// version embedded in the binary.
+	tmpl, err := resolveTemplate(*webFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard report:", err)
+		os.Exit(2)
+	}
+
+	meta := buildMeta(*root, *branch, *commit, *repo)
+	if err := report.Render(w, tmpl, rep, meta); err != nil {
+		fmt.Fprintln(os.Stderr, "specguard report:", err)
+		os.Exit(2)
+	}
+}
+
+// resolveTemplate returns the single-file UI template: the file at webFile if
+// given, otherwise the embedded default.
+func resolveTemplate(webFile string) (string, error) {
+	if webFile != "" {
+		b, err := os.ReadFile(webFile)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	return report.Template()
+}
+
+// buildMeta fills provenance, preferring explicit flags and falling back to git.
+func buildMeta(root, branch, commit, repo string) report.Meta {
+	gitBranch, gitCommit := report.DetectGit(root)
+	if branch == "" {
+		branch = gitBranch
+	}
+	if commit == "" {
+		commit = gitCommit
+	}
+	short := commit
+	if len(short) > 7 {
+		short = short[:7]
+	}
+	return report.Meta{
+		Repo:        repo,
+		Branch:      branch,
+		Commit:      commit,
+		CommitShort: short,
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 }
 

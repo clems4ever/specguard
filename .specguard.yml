@@ -1,0 +1,8 @@
+# specguard lints ITSELF: its behaviours live in specs/, pinned to the Go tests
+# under internal/ and the UI's Playwright e2e under web/e2e. The example/ project
+# has its own specs and is excluded here.
+specsDir: specs
+tests:
+  - "internal/**/*_test.go"
+  - "cmd/**/*_test.go"
+  - "web/e2e/**/*.spec.ts"
