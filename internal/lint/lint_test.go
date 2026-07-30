@@ -236,9 +236,9 @@ func TestRefsCaptureFileAndLine(t *testing.T) {
 // spec:ui-area-overview
 func TestAreaOverviewLoadedAndNotASpec(t *testing.T) {
 	rep := run(t, map[string]string{
-		"specs/ui/dashboard.md":      "---\nid: ui-dashboard\ntitle: Dashboard\ncovers:\n  - web\n---\nbody\n",
-		"specs/ui/_area.md":          "---\ntitle: UI\n---\nThe report's own interface.\n",
-		"web/e2e/x.spec.ts":          "// %SPEC%ui-dashboard\ntest('x', () => {})\n",
+		"specs/ui/dashboard.md": "---\nid: ui-dashboard\ntitle: Dashboard\ncovers:\n  - web\n---\nbody\n",
+		"specs/ui/_area.md":     "---\ntitle: UI\n---\nThe report's own interface.\n",
+		"web/e2e/x.spec.ts":     "// %SPEC%ui-dashboard\ntest('x', () => {})\n",
 	})
 	if !rep.OK {
 		t.Fatalf("expected PASS, got findings: %+v", rep.Findings)
