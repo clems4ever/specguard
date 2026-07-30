@@ -1,6 +1,7 @@
 ---
 id: lint-draft-uncovered-warns
 title: A draft spec may be uncovered
+parent: lint-traceability
 covers:
   - internal/lint
 ---

@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import type { AreaInfo, Report, ReportMeta, SpecStatus, DiffResponse } from '../types';
-import { areaRollup, filterSpecs, groupByArea, specState, summarize } from '../selectors';
+import type { SpecNode } from '../selectors';
+import {
+  areaRollup,
+  buildTree,
+  filterSpecs,
+  groupByArea,
+  specState,
+  subtreeRollup,
+  summarize,
+} from '../selectors';
 import { StatusBadge } from './StatusBadge';
 import { FindingsPanel } from './FindingsPanel';
 import { ChangesView } from './ChangesView';
@@ -10,28 +19,78 @@ import { Stamp } from './Stamp';
 function SpecRow({
   spec,
   onSelect,
-  hasResults,
+  state,
+  rightLabel,
 }: {
   spec: SpecStatus;
   onSelect: (id: string) => void;
-  hasResults: boolean;
+  state: ReturnType<typeof specState>;
+  rightLabel: string;
 }) {
-  const tests = spec.tests ?? [];
   return (
     <button
       className="spec-row"
       data-testid={`spec-row-${spec.id}`}
       onClick={() => onSelect(spec.id)}
     >
-      <StatusBadge state={specState(spec, hasResults)} />
+      <StatusBadge state={state} />
       <span className="spec-row-main">
         <span className="spec-row-title">{spec.title}</span>
         <code className="spec-row-id">{spec.id}</code>
       </span>
-      <span className="spec-row-tests muted">
-        {tests.length ? `${tests.length} test${tests.length > 1 ? 's' : ''}` : '—'}
-      </span>
+      <span className="spec-row-tests muted">{rightLabel}</span>
     </button>
+  );
+}
+
+// One node of the derivation tree. A leaf renders as a plain row; a parent adds
+// a chevron that expands its refinements and shows a subtree roll-up (green only
+// when everything derived from it is proven) rather than its own test state.
+function TreeNode({
+  node,
+  onSelect,
+  hasResults,
+}: {
+  node: SpecNode;
+  onSelect: (id: string) => void;
+  hasResults: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+  const isParent = node.children.length > 0;
+  const tests = node.spec.tests ?? [];
+  const state = isParent ? subtreeRollup(node, hasResults).state : specState(node.spec, hasResults);
+  const count = isParent ? subtreeRollup(node, hasResults).count : 0;
+  const testLabel = tests.length ? `${tests.length} test${tests.length > 1 ? 's' : ''}` : '';
+  const rightLabel = isParent
+    ? // Parents show their subtree size, and their own tests too when they have any.
+      `${count} spec${count === 1 ? '' : 's'}${testLabel ? ` · ${testLabel}` : ''}`
+    : testLabel || '—';
+  return (
+    <div className="tree-node" data-testid={`tree-node-${node.spec.id}`}>
+      <div className="tree-row">
+        {isParent ? (
+          <button
+            className="tree-toggle"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            data-testid={`tree-toggle-${node.spec.id}`}
+            title={open ? 'Collapse' : 'Expand'}
+          >
+            {open ? '▾' : '▸'}
+          </button>
+        ) : (
+          <span className="tree-toggle-spacer" aria-hidden />
+        )}
+        <SpecRow spec={node.spec} onSelect={onSelect} state={state} rightLabel={rightLabel} />
+      </div>
+      {isParent && open && (
+        <div className="tree-children">
+          {node.children.map((c) => (
+            <TreeNode key={c.spec.id} node={c} onSelect={onSelect} hasResults={hasResults} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -76,8 +135,8 @@ function AreaSection({
       )}
       {open && (
         <div className="spec-list">
-          {specs.map((s) => (
-            <SpecRow key={s.id} spec={s} onSelect={onSelect} hasResults={hasResults} />
+          {buildTree(specs).map((n) => (
+            <TreeNode key={n.spec.id} node={n} onSelect={onSelect} hasResults={hasResults} />
           ))}
         </div>
       )}

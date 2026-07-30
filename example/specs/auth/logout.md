@@ -1,6 +1,7 @@
 ---
 id: auth-logout
 title: Logging out invalidates the session server-side
+parent: auth-access
 status: active
 covers:
   - server/auth.go

@@ -131,7 +131,9 @@ export function App() {
     : undefined;
 
   if (selectedId && selected) {
-    return <SpecDetail spec={selected} report={report} onBack={back} meta={META} />;
+    return (
+      <SpecDetail spec={selected} report={report} onBack={back} onSelect={select} meta={META} />
+    );
   }
   // In a static export there is no server to refresh from and no live git to
   // diff against, so both affordances are withheld (the props are omitted).

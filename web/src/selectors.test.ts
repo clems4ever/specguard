@@ -7,6 +7,8 @@ import {
   groupByArea,
   findingsForSpec,
   areaRollup,
+  buildTree,
+  subtreeRollup,
 } from './selectors';
 import { spec, mixedReport, resultsReport } from './test/fixtures';
 
@@ -123,6 +125,76 @@ describe('areaRollup', () => {
     );
     expect(r.state).toBe('failing');
     expect(r.allGood).toBe(false);
+  });
+});
+
+describe('buildTree', () => {
+  it('nests children under their parent and sorts by id', () => {
+    const forest = buildTree([
+      spec({ id: 'cap-b', parent: 'cap', covered: true }),
+      spec({ id: 'cap', hasChild: true }),
+      spec({ id: 'cap-a', parent: 'cap', covered: true }),
+      spec({ id: 'lonely', covered: true }),
+    ]);
+    // Two roots: the capability and the unparented spec.
+    expect(forest.map((n) => n.spec.id)).toEqual(['cap', 'lonely']);
+    const cap = forest[0];
+    expect(cap.children.map((n) => n.spec.id)).toEqual(['cap-a', 'cap-b']);
+    expect(cap.children[0].depth).toBe(1);
+  });
+
+  it('treats a spec whose parent is absent as a root', () => {
+    const forest = buildTree([spec({ id: 'orphan', parent: 'gone', covered: true })]);
+    expect(forest).toHaveLength(1);
+    expect(forest[0].spec.id).toBe('orphan');
+  });
+
+  it('does not loop on a cyclic parent link', () => {
+    const forest = buildTree([
+      spec({ id: 'a', parent: 'b' }),
+      spec({ id: 'b', parent: 'a' }),
+    ]);
+    // Both point at each other; buildTree still terminates and yields nodes.
+    expect(forest.length).toBeGreaterThan(0);
+  });
+});
+
+describe('subtreeRollup', () => {
+  it('a parent is green only when every descendant is proven', () => {
+    const forest = buildTree([
+      spec({ id: 'cap', hasChild: true }),
+      spec({ id: 'cap-ok', parent: 'cap', covered: true }),
+      spec({ id: 'cap-bad', parent: 'cap', covered: false }), // uncovered
+    ]);
+    const roll = subtreeRollup(forest[0]);
+    expect(roll.count).toBe(2);
+    expect(roll.state).toBe('uncovered'); // worst wins
+  });
+
+  it('a parent whose children all pass reads passing (with results)', () => {
+    const forest = buildTree([
+      spec({ id: 'cap', hasChild: true }),
+      spec({ id: 'cap-a', parent: 'cap', covered: true, result: 'passed' }),
+      spec({ id: 'cap-b', parent: 'cap', covered: true, result: 'passed' }),
+    ]);
+    expect(subtreeRollup(forest[0], true).state).toBe('passing');
+  });
+
+  it("folds in the parent's OWN failing test even when its children pass", () => {
+    const forest = buildTree([
+      // A parent that ALSO carries its own (failing) test.
+      spec({ id: 'cap', hasChild: true, covered: true, tests: ['cap_test.go'], result: 'failed' }),
+      spec({ id: 'cap-a', parent: 'cap', covered: true, result: 'passed' }),
+    ]);
+    expect(subtreeRollup(forest[0], true).state).toBe('failing');
+  });
+
+  it("ignores a test-less parent's own state (neutral baseline)", () => {
+    const forest = buildTree([
+      spec({ id: 'cap', hasChild: true, covered: false }), // no direct test
+      spec({ id: 'cap-a', parent: 'cap', covered: true, result: 'passed' }),
+    ]);
+    expect(subtreeRollup(forest[0], true).state).toBe('passing');
   });
 });
 

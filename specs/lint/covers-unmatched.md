@@ -1,6 +1,7 @@
 ---
 id: lint-covers-unmatched
 title: A covers entry matching no file warns
+parent: lint-traceability
 covers:
   - internal/lint
 ---

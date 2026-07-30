@@ -123,6 +123,10 @@ type SpecStatus struct {
 	Covered  bool     `json:"covered"`
 	CoversOK bool     `json:"coversOk"`
 	Draft    bool     `json:"draft"`
+	// Parent is the id of the spec this one refines (see spec.Spec.Parent).
+	// A spec with children is verified by them, so it needs no direct test.
+	Parent   string `json:"parent,omitempty"`
+	HasChild bool   `json:"hasChild,omitempty"`
 	// Result is the aggregate outcome of this spec's covering tests, set when
 	// results are ingested (failed if any covering test failed).
 	Result TestStatus `json:"result,omitempty"`
@@ -247,6 +251,15 @@ func Run(cfg Config) (*Report, error) {
 		return rep, err
 	}
 
+	// Parent links: which specs have children, and validate every link.
+	hasChild := map[string]bool{}
+	for _, s := range specs {
+		if s.Parent != "" {
+			hasChild[s.Parent] = true
+		}
+	}
+	rep.Findings = append(rep.Findings, validateParents(specs, byID)...)
+
 	// 3. Resolve each spec's status.
 	for _, s := range specs {
 		draft := s.Status == spec.StatusDraft
@@ -254,11 +267,15 @@ func Run(cfg Config) (*Report, error) {
 		st := SpecStatus{
 			// s.Path is already relative to cfg.Root (set in loadSpecs).
 			ID: s.ID, Title: s.Title, Status: s.Status, Path: s.Path,
-			Body: s.Body, Covers: s.Covers,
+			Body: s.Body, Covers: s.Covers, Parent: s.Parent,
 			Tests: distinctFiles(specRefs), Refs: specRefs,
 			Covered: len(specRefs) > 0, CoversOK: true, Draft: draft,
+			HasChild: hasChild[s.ID],
 		}
-		if !st.Covered {
+		// A parent spec is verified by its children (a leaf must be covered by a
+		// test; a parent's coverage is derived), so it never fails for lacking a
+		// direct test of its own.
+		if !st.Covered && !st.HasChild {
 			// A draft spec is allowed to have no test yet — it is a planned
 			// behaviour, reported as a warning rather than a build failure.
 			if draft {
@@ -342,6 +359,38 @@ func loadSpecs(cfg Config) ([]*spec.Spec, []Finding) {
 		})
 	}
 	return specs, findings
+}
+
+// validateParents checks every `parent` link: the parent must be a defined
+// spec, and the chain of parents must not form a cycle (which would make the
+// derivation tree ill-defined). Both are errors that fail the build.
+func validateParents(specs []*spec.Spec, byID map[string]*spec.Spec) []Finding {
+	var findings []Finding
+	for _, s := range specs {
+		if s.Parent == "" {
+			continue
+		}
+		if _, ok := byID[s.Parent]; !ok {
+			findings = append(findings, Finding{
+				Severity: Error, Rule: "undefined-parent", Spec: s.ID, File: s.Path,
+				Message: "parent spec:" + s.Parent + " is not defined",
+			})
+			continue
+		}
+		// Walk up the chain from this spec; a repeat id means a cycle.
+		seen := map[string]bool{}
+		for cur := s; cur != nil && cur.Parent != ""; cur = byID[cur.Parent] {
+			if seen[cur.ID] {
+				findings = append(findings, Finding{
+					Severity: Error, Rule: "parent-cycle", Spec: s.ID, File: s.Path,
+					Message: "parent chain forms a cycle at spec:" + cur.ID,
+				})
+				break
+			}
+			seen[cur.ID] = true
+		}
+	}
+	return findings
 }
 
 // loadAreas parses every `_area.md` overview under the specs dir, keyed by the

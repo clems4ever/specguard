@@ -27,6 +27,39 @@ describe('SpecDetail', () => {
     expect(within(tests).getByText('web/e2e/auth.spec.ts')).toBeInTheDocument();
   });
 
+  it('links to the parent and lists refinements, navigating on click', async () => {
+    const onSelect = vi.fn();
+    const report = {
+      ok: true,
+      testFiles: 1,
+      findings: [],
+      specs: [
+        spec({ id: 'cap', title: 'A capability', path: 'specs/x/cap.md', hasChild: true }),
+        spec({
+          id: 'cap-leaf',
+          title: 'A refinement',
+          path: 'specs/x/leaf.md',
+          parent: 'cap',
+          covered: true,
+          tests: ['x_test.go'],
+        }),
+      ],
+    };
+    const parent = report.specs[0];
+    render(<SpecDetail spec={parent} report={report} onBack={() => {}} onSelect={onSelect} />);
+    // A parent with a covered child reads as satisfied, not uncovered.
+    expect(within(screen.getByTestId('detail-head')).getByTestId('badge-covered')).toBeInTheDocument();
+    // Its refinement is listed and navigates on click.
+    await userEvent.click(screen.getByTestId('child-link-cap-leaf'));
+    expect(onSelect).toHaveBeenCalledWith('cap-leaf');
+
+    // The child shows a breadcrumb back up to its parent.
+    const child = report.specs[1];
+    render(<SpecDetail spec={child} report={report} onBack={() => {}} onSelect={onSelect} />);
+    await userEvent.click(screen.getByTestId('refines'));
+    expect(onSelect).toHaveBeenCalledWith('cap');
+  });
+
   it('renders the covers list', () => {
     render(<SpecDetail spec={login} report={mixedReport} onBack={() => {}} />);
     expect(within(screen.getByTestId('covers-list')).getByText('server/auth.go')).toBeInTheDocument();

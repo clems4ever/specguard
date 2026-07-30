@@ -37,6 +37,8 @@ export interface SpecStatus {
   covered: boolean;
   coversOk: boolean;
   draft: boolean;
+  parent?: string; // id of the spec this one refines, if any
+  hasChild?: boolean; // some spec declares this one as its parent
   result?: TestStatus; // aggregate outcome of covering tests
   artifacts?: Artifact[] | null; // screenshots captured by covering tests
 }

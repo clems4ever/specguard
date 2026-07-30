@@ -21,6 +21,11 @@ type Spec struct {
 	Status string   `json:"status,omitempty"`
 	Covers []string `json:"covers,omitempty"`
 	Path   string   `json:"path"`
+	// Parent is the id of the spec this one refines, if any. A spec with a
+	// parent is a more specific behaviour derived from a higher-level intent;
+	// parent links form a tree from broad capabilities down to leaf behaviours
+	// that tests verify directly.
+	Parent string `json:"parent,omitempty"`
 	// Body is the markdown that follows the frontmatter, verbatim. specguard
 	// never interprets it; it is carried so a UI can render the prose.
 	Body string `json:"body,omitempty"`
@@ -70,6 +75,12 @@ func Parse(data []byte) (*Spec, error) {
 	}
 	if v := fields["status"]; len(v) > 0 {
 		s.Status = v[0]
+	}
+	if v := fields["parent"]; len(v) > 0 {
+		s.Parent = v[0]
+	}
+	if s.Parent != "" && !idPattern.MatchString(s.Parent) {
+		return nil, fmt.Errorf("parent %q must match %s", s.Parent, idPattern)
 	}
 	if s.ID == "" {
 		return nil, fmt.Errorf("frontmatter is missing required field 'id'")
