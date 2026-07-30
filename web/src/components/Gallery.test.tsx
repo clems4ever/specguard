@@ -21,7 +21,8 @@ describe('Gallery', () => {
     const gallery = screen.getByTestId('gallery');
     expect(gallery.querySelectorAll('img')).toHaveLength(2);
     const first = screen.getByTestId('gallery-thumb-0').querySelector('img')!;
-    expect(first).toHaveAttribute('src', 'assets/specs/auth-login/0.png');
+    // Resolved against the app base (`/` under jsdom) so it loads on any route.
+    expect(first).toHaveAttribute('src', '/assets/specs/auth-login/0.png');
   });
 
   it('opens a lightbox on click and closes it on click', async () => {
@@ -30,7 +31,7 @@ describe('Gallery', () => {
 
     await userEvent.click(screen.getByTestId('gallery-thumb-1'));
     const lightbox = screen.getByTestId('lightbox');
-    expect(lightbox.querySelector('img')).toHaveAttribute('src', 'assets/specs/auth-login/1.png');
+    expect(lightbox.querySelector('img')).toHaveAttribute('src', '/assets/specs/auth-login/1.png');
 
     await userEvent.click(lightbox);
     expect(screen.queryByTestId('lightbox')).not.toBeInTheDocument();
