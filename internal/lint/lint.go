@@ -78,11 +78,26 @@ type Finding struct {
 	Message  string   `json:"message"`
 }
 
+// TestStatus is the outcome of a test run, set by `specguard report --results`.
+// The empty value means "no result ingested".
+type TestStatus string
+
+const (
+	StatusPassed  TestStatus = "passed"
+	StatusFailed  TestStatus = "failed"
+	StatusSkipped TestStatus = "skipped"
+)
+
 // Ref is one `spec:<id>` reference: the test file and the 1-based line it sits
 // on, so the report can link straight to the covering test on GitHub.
 type Ref struct {
 	File string `json:"file"`
 	Line int    `json:"line"`
+	// Test is the Go test function this reference sits above (e.g. "TestLogin"),
+	// used to correlate `go test -json` results. Empty for non-Go references.
+	Test string `json:"test,omitempty"`
+	// Status is this test's outcome, filled in when results are ingested.
+	Status TestStatus `json:"status,omitempty"`
 }
 
 // SpecStatus is the resolved traceability state of one spec.
@@ -100,6 +115,9 @@ type SpecStatus struct {
 	Covered  bool     `json:"covered"`
 	CoversOK bool     `json:"coversOk"`
 	Draft    bool     `json:"draft"`
+	// Result is the aggregate outcome of this spec's covering tests, set when
+	// results are ingested (failed if any covering test failed).
+	Result TestStatus `json:"result,omitempty"`
 }
 
 // Report is the full result of a run.
@@ -108,11 +126,18 @@ type Report struct {
 	Findings  []Finding    `json:"findings"`
 	TestFiles int          `json:"testFiles"`
 	OK        bool         `json:"ok"`
+	// HasResults is true when a test run was ingested, so the UI knows to show
+	// pass/fail state rather than coverage alone.
+	HasResults bool `json:"hasResults,omitempty"`
 }
 
 // refPattern matches a `spec:<id>` reference embedded in a test file — a
 // Playwright tag (`@spec:skills-edit`) or a Go comment (`// spec:skills-edit`).
 var refPattern = regexp.MustCompile(`spec:([A-Za-z0-9._-]+)`)
+
+// funcPattern matches a Go test/benchmark/example function declaration, so a
+// `// spec:x` comment can be associated with the function it sits above.
+var funcPattern = regexp.MustCompile(`^func ((?:Test|Benchmark|Example)[A-Za-z0-9_]*)\s*\(`)
 
 var skipDirs = map[string]bool{
 	".git": true, "node_modules": true, "vendor": true,
@@ -173,7 +198,9 @@ func Run(cfg Config) (*Report, error) {
 			return err
 		}
 		// Scan line by line so each reference carries its 1-based line number.
-		for i, line := range strings.Split(string(data), "\n") {
+		lines := strings.Split(string(data), "\n")
+		isGo := strings.HasSuffix(rel, "_test.go")
+		for i, line := range lines {
 			for _, m := range refPattern.FindAllStringSubmatch(line, -1) {
 				id := m[1]
 				if _, ok := byID[id]; !ok {
@@ -183,7 +210,11 @@ func Run(cfg Config) (*Report, error) {
 					})
 					continue
 				}
-				refs[id] = append(refs[id], Ref{File: rel, Line: i + 1})
+				ref := Ref{File: rel, Line: i + 1}
+				if isGo {
+					ref.Test = nextTestFunc(lines, i)
+				}
+				refs[id] = append(refs[id], ref)
 			}
 		}
 		return nil
@@ -291,6 +322,18 @@ func anyFileMatches(entry string, files []string) bool {
 		}
 	}
 	return false
+}
+
+// nextTestFunc returns the name of the first Go test function at or below line
+// index `from` (0-based), i.e. the function a `// spec:x` comment sits above.
+// Empty if none follows within the file.
+func nextTestFunc(lines []string, from int) string {
+	for i := from; i < len(lines); i++ {
+		if m := funcPattern.FindStringSubmatch(lines[i]); m != nil {
+			return m[1]
+		}
+	}
+	return ""
 }
 
 // sortedRefs returns refs ordered by file then line, so link lists are stable.

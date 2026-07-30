@@ -198,8 +198,9 @@ func TestRefsCaptureFileAndLine(t *testing.T) {
 	}
 	got := rep.Specs[0].Refs
 	want := []Ref{
-		{File: "internal/skill/x_test.go", Line: 3},
-		{File: "internal/skill/x_test.go", Line: 5},
+		// Go refs also carry the test function the comment sits above.
+		{File: "internal/skill/x_test.go", Line: 3, Test: "TestA"},
+		{File: "internal/skill/x_test.go", Line: 5, Test: "TestB"},
 		{File: "web/e2e/x.spec.ts", Line: 2},
 	}
 	if len(got) != len(want) {

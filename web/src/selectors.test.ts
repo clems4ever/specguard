@@ -7,7 +7,7 @@ import {
   groupByArea,
   findingsForSpec,
 } from './selectors';
-import { spec, mixedReport } from './test/fixtures';
+import { spec, mixedReport, resultsReport } from './test/fixtures';
 
 describe('specState', () => {
   it('covered when covered and covers ok', () => {
@@ -82,5 +82,32 @@ describe('findingsForSpec', () => {
     expect(findingsForSpec(mixedReport, 'tasks-create').map((f) => f.rule)).toEqual([
       'uncovered-spec',
     ]);
+  });
+});
+
+describe('specState with results', () => {
+  it('reflects the test outcome for covered specs when a run was ingested', () => {
+    expect(specState(spec({ id: 'a', covered: true, result: 'passed' }), true)).toBe('passing');
+    expect(specState(spec({ id: 'b', covered: true, result: 'failed' }), true)).toBe('failing');
+    expect(specState(spec({ id: 'c', covered: true, result: 'skipped' }), true)).toBe('skipped');
+    // covered but no result present in the run
+    expect(specState(spec({ id: 'd', covered: true }), true)).toBe('not-run');
+    // uncovered stays uncovered regardless of results
+    expect(specState(spec({ id: 'e', covered: false }), true)).toBe('uncovered');
+  });
+
+  it('ignores results when none were ingested (coverage view)', () => {
+    expect(specState(spec({ id: 'a', covered: true, result: 'failed' }), false)).toBe('covered');
+  });
+});
+
+describe('summarize with results', () => {
+  it('counts passing/failing/skipped and flags hasResults', () => {
+    const s = summarize(resultsReport);
+    expect(s.hasResults).toBe(true);
+    expect(s.passing).toBe(1);
+    expect(s.failing).toBe(1);
+    expect(s.skipped).toBe(1);
+    expect(s.uncovered).toBe(1); // tasks-create has no test
   });
 });

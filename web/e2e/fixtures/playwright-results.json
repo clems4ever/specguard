@@ -1,0 +1,10 @@
+{
+  "config": {},
+  "suites": [
+    {
+      "specs": [
+        { "title": "logout rejects a replayed cookie", "tags": ["@spec:auth-logout"], "tests": [{ "results": [{ "status": "failed" }] }] }
+      ]
+    }
+  ]
+}

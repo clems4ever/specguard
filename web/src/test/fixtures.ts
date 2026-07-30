@@ -80,6 +80,59 @@ export const mixedReport: Report = {
   ],
 };
 
+// A report with an ingested test run: one passing, one FAILING (covered but
+// red), one skipped, and one uncovered — exercising the result states.
+export const resultsReport: Report = {
+  ok: true, // traceability passes; the failing test is what should flip the verdict
+  testFiles: 4,
+  hasResults: true,
+  specs: [
+    spec({
+      id: 'auth-login',
+      title: 'A user can log in',
+      path: 'specs/auth/login.md',
+      covered: true,
+      result: 'passed',
+      tests: ['server/auth_test.go'],
+      refs: [{ file: 'server/auth_test.go', line: 5, test: 'TestLogin', status: 'passed' }],
+    }),
+    spec({
+      id: 'auth-logout',
+      title: 'Logout revokes the session',
+      path: 'specs/auth/logout.md',
+      covered: true,
+      result: 'failed',
+      tests: ['server/auth_test.go'],
+      refs: [{ file: 'server/auth_test.go', line: 12, test: 'TestLogout', status: 'failed' }],
+    }),
+    spec({
+      id: 'tasks-toggle',
+      title: 'Toggling a task persists',
+      path: 'specs/tasks/toggle.md',
+      covered: true,
+      result: 'skipped',
+      tests: ['server/tasks_test.go'],
+      refs: [{ file: 'server/tasks_test.go', line: 3, test: 'TestToggle', status: 'skipped' }],
+    }),
+    spec({
+      id: 'tasks-create',
+      title: 'A user can create a task',
+      path: 'specs/tasks/create.md',
+      covered: false,
+      tests: [],
+    }),
+  ],
+  findings: [
+    {
+      severity: 'error',
+      rule: 'uncovered-spec',
+      spec: 'tasks-create',
+      file: 'specs/tasks/create.md',
+      message: 'no test references spec:tasks-create',
+    },
+  ],
+};
+
 export const cleanReport: Report = {
   ok: true,
   testFiles: 3,

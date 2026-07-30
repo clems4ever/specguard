@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dashboard } from './Dashboard';
-import { mixedReport } from '../test/fixtures';
+import { mixedReport, resultsReport } from '../test/fixtures';
 
 function renderDash(overrides = {}) {
   const onSelect = vi.fn();
@@ -91,6 +91,24 @@ describe('Dashboard', () => {
     expect(toggle).toHaveTextContent('Changed only');
     await userEvent.click(toggle);
     expect(onToggleChanged).toHaveBeenCalled();
+  });
+
+  it('shows pass/fail state when a test run was ingested', () => {
+    render(<Dashboard report={resultsReport} onSelect={vi.fn()} onRefresh={vi.fn()} />);
+    // Verdict flips to FAIL because a covered spec is failing (traceability ok).
+    const banner = screen.getByTestId('status-banner');
+    expect(banner).toHaveTextContent('FAIL');
+    expect(banner).toHaveTextContent('1 failing');
+    // Passing/Failing stat tiles replace Covered/Uncovered.
+    expect(screen.getByText('Passing', { selector: '.stat-label' })).toBeInTheDocument();
+    expect(screen.getByText('Failing', { selector: '.stat-label' })).toBeInTheDocument();
+    // The failing spec's row shows the failing badge, the passing one passing.
+    expect(
+      within(screen.getByTestId('spec-row-auth-logout')).getByTestId('badge-failing'),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('spec-row-auth-login')).getByTestId('badge-passing'),
+    ).toBeInTheDocument();
   });
 
   it('swaps the area list for the changed view when changedMode is on', () => {
