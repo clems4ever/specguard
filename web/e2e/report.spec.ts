@@ -47,3 +47,23 @@ test('static report withholds server-only controls (refresh, changed-only)', asy
   await expect(page.getByTestId('refresh')).toHaveCount(0);
   await expect(page.getByTestId('toggle-changed')).toHaveCount(0);
 });
+
+test('spec detail deep-links to the source and covering tests on GitHub', async ({ page }) => {
+  await page.goto(reportURL);
+  await page.getByTestId('spec-row-auth-login').click();
+
+  // Spec source links to the .md at the pinned commit (from serve.sh: repo
+  // clems4ever/specguard, commit 0123456789abcdef).
+  const source = page.getByTestId('spec-source-link');
+  await expect(source).toHaveAttribute(
+    'href',
+    'https://github.com/clems4ever/specguard/blob/0123456789abcdef/specs/auth/login.md',
+  );
+
+  // Each covering test links to its exact line (path:line label, #Lline anchor).
+  const firstTest = page.getByTestId('test-list').locator('a').first();
+  await expect(firstTest).toHaveAttribute(
+    'href',
+    /https:\/\/github\.com\/clems4ever\/specguard\/blob\/0123456789abcdef\/.+#L\d+/,
+  );
+});

@@ -185,3 +185,33 @@ func TestSpecFilesNotScannedAsTests(t *testing.T) {
 		t.Fatal("spec body reference must not satisfy coverage")
 	}
 }
+
+func TestRefsCaptureFileAndLine(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/edit.md": "---\nid: skills-edit\ntitle: Editing persists\n---\nbody\n",
+		// spec:skills-edit sits on line 3; a second reference on line 5.
+		"internal/skill/x_test.go": "package skill\n\n// spec:skills-edit\nfunc TestA(t *testing.T){}\n// spec:skills-edit\nfunc TestB(t *testing.T){}\n",
+		"web/e2e/x.spec.ts":        "import {test} from '@playwright/test';\ntest('edit', { tag: '@spec:skills-edit' }, async () => {});\n",
+	})
+	if len(rep.Specs) != 1 {
+		t.Fatalf("want 1 spec, got %d", len(rep.Specs))
+	}
+	got := rep.Specs[0].Refs
+	want := []Ref{
+		{File: "internal/skill/x_test.go", Line: 3},
+		{File: "internal/skill/x_test.go", Line: 5},
+		{File: "web/e2e/x.spec.ts", Line: 2},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("refs = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("ref[%d] = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	// Tests stays the distinct-file list (for the count).
+	if len(rep.Specs[0].Tests) != 2 {
+		t.Errorf("distinct test files = %v, want 2", rep.Specs[0].Tests)
+	}
+}

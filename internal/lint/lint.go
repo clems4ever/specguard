@@ -78,14 +78,24 @@ type Finding struct {
 	Message  string   `json:"message"`
 }
 
+// Ref is one `spec:<id>` reference: the test file and the 1-based line it sits
+// on, so the report can link straight to the covering test on GitHub.
+type Ref struct {
+	File string `json:"file"`
+	Line int    `json:"line"`
+}
+
 // SpecStatus is the resolved traceability state of one spec.
 type SpecStatus struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Status   string   `json:"status,omitempty"`
-	Path     string   `json:"path"`
-	Body     string   `json:"body,omitempty"`
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Status string `json:"status,omitempty"`
+	Path   string `json:"path"`
+	Body   string `json:"body,omitempty"`
+	// Tests are the distinct test files that reference this spec (kept for the
+	// count); Refs are the precise (file, line) locations, for deep links.
 	Tests    []string `json:"tests"`
+	Refs     []Ref    `json:"refs,omitempty"`
 	Covers   []string `json:"covers,omitempty"`
 	Covered  bool     `json:"covered"`
 	CoversOK bool     `json:"coversOk"`
@@ -127,7 +137,7 @@ func Run(cfg Config) (*Report, error) {
 
 	// 2. Walk the tree once: scan test files for references, and collect all
 	// file paths so `covers` entries can be validated.
-	refs := map[string][]string{} // spec id -> referencing test files
+	refs := map[string][]Ref{} // spec id -> (file, line) references
 	var allFiles []string
 	specsPrefix := filepath.ToSlash(filepath.Clean(cfg.SpecsDir)) + "/"
 	walkRoot := cfg.Root
@@ -162,16 +172,19 @@ func Run(cfg Config) (*Report, error) {
 		if err != nil {
 			return err
 		}
-		for _, m := range refPattern.FindAllStringSubmatch(string(data), -1) {
-			id := m[1]
-			if _, ok := byID[id]; !ok {
-				rep.Findings = append(rep.Findings, Finding{
-					Severity: Error, Rule: "undefined-reference", Spec: id, File: rel,
-					Message: "references spec:" + id + " but no such spec is defined",
-				})
-				continue
+		// Scan line by line so each reference carries its 1-based line number.
+		for i, line := range strings.Split(string(data), "\n") {
+			for _, m := range refPattern.FindAllStringSubmatch(line, -1) {
+				id := m[1]
+				if _, ok := byID[id]; !ok {
+					rep.Findings = append(rep.Findings, Finding{
+						Severity: Error, Rule: "undefined-reference", Spec: id, File: rel,
+						Message: "references spec:" + id + " but no such spec is defined",
+					})
+					continue
+				}
+				refs[id] = append(refs[id], Ref{File: rel, Line: i + 1})
 			}
-			refs[id] = appendUnique(refs[id], rel)
 		}
 		return nil
 	})
@@ -182,13 +195,14 @@ func Run(cfg Config) (*Report, error) {
 	// 3. Resolve each spec's status.
 	for _, s := range specs {
 		draft := s.Status == spec.StatusDraft
+		specRefs := sortedRefs(refs[s.ID])
 		st := SpecStatus{
 			// s.Path is already relative to cfg.Root (set in loadSpecs).
 			ID: s.ID, Title: s.Title, Status: s.Status, Path: s.Path,
-			Body: s.Body, Covers: s.Covers, Tests: refs[s.ID],
-			Covered: len(refs[s.ID]) > 0, CoversOK: true, Draft: draft,
+			Body: s.Body, Covers: s.Covers,
+			Tests: distinctFiles(specRefs), Refs: specRefs,
+			Covered: len(specRefs) > 0, CoversOK: true, Draft: draft,
 		}
-		sort.Strings(st.Tests)
 		if !st.Covered {
 			// A draft spec is allowed to have no test yet — it is a planned
 			// behaviour, reported as a warning rather than a build failure.
@@ -279,13 +293,32 @@ func anyFileMatches(entry string, files []string) bool {
 	return false
 }
 
-func appendUnique(xs []string, x string) []string {
-	for _, e := range xs {
-		if e == x {
-			return xs
+// sortedRefs returns refs ordered by file then line, so link lists are stable.
+func sortedRefs(refs []Ref) []Ref {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := append([]Ref(nil), refs...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].File != out[j].File {
+			return out[i].File < out[j].File
+		}
+		return out[i].Line < out[j].Line
+	})
+	return out
+}
+
+// distinctFiles returns the unique test files among refs, in order.
+func distinctFiles(refs []Ref) []string {
+	var files []string
+	seen := map[string]bool{}
+	for _, r := range refs {
+		if !seen[r.File] {
+			seen[r.File] = true
+			files = append(files, r.File)
 		}
 	}
-	return append(xs, x)
+	return files
 }
 
 func relPath(root, path string) string {

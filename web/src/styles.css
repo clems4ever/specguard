@@ -401,6 +401,22 @@ code {
   margin: 3px 0;
 }
 
+/* ---- code links (deep links to GitHub) ---- */
+.code-link {
+  text-decoration: none;
+  color: inherit;
+}
+.code-link code {
+  color: var(--accent);
+}
+.code-link:hover code {
+  text-decoration: underline;
+}
+.code-link-mark {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
 /* ---- markdown ---- */
 .markdown {
   background: var(--panel);
