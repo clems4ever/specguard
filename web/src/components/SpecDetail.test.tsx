@@ -2,10 +2,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SpecDetail } from './SpecDetail';
-import { mixedReport } from '../test/fixtures';
+import { mixedReport, spec } from '../test/fixtures';
+import type { ReportMeta } from '../types';
 
 const login = mixedReport.specs.find((s) => s.id === 'auth-login')!;
 const uncovered = mixedReport.specs.find((s) => s.id === 'tasks-create')!;
+
+const withRefs = spec({
+  id: 'auth-login',
+  title: 'A user can log in',
+  path: 'specs/auth/login.md',
+  covered: true,
+  tests: ['server/auth_test.go'],
+  refs: [{ file: 'server/auth_test.go', line: 42 }],
+});
+const meta: ReportMeta = { repo: 'clems4ever/specguard', commit: 'abc123' };
 
 describe('SpecDetail', () => {
   it('renders title, id and covering tests', () => {
@@ -38,5 +49,28 @@ describe('SpecDetail', () => {
     render(<SpecDetail spec={login} report={mixedReport} onBack={onBack} />);
     await userEvent.click(screen.getByTestId('back'));
     expect(onBack).toHaveBeenCalled();
+  });
+
+  it('links the spec source and each covering test to GitHub at the pinned commit', () => {
+    render(<SpecDetail spec={withRefs} report={mixedReport} onBack={() => {}} meta={meta} />);
+    const source = screen.getByTestId('spec-source-link') as HTMLAnchorElement;
+    expect(source.tagName).toBe('A');
+    expect(source).toHaveAttribute(
+      'href',
+      'https://github.com/clems4ever/specguard/blob/abc123/specs/auth/login.md',
+    );
+    const testRef = within(screen.getByTestId('test-list')).getByText('server/auth_test.go:42');
+    const anchor = testRef.closest('a')!;
+    expect(anchor).toHaveAttribute(
+      'href',
+      'https://github.com/clems4ever/specguard/blob/abc123/server/auth_test.go#L42',
+    );
+  });
+
+  it('falls back to plain text when there is no commit (live serve)', () => {
+    render(<SpecDetail spec={withRefs} report={mixedReport} onBack={() => {}} />);
+    expect(screen.getByTestId('spec-source-link').tagName).toBe('CODE');
+    // The label still carries the line, just not a link.
+    expect(within(screen.getByTestId('test-list')).getByText('server/auth_test.go:42')).toBeInTheDocument();
   });
 });

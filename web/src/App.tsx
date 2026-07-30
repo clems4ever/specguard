@@ -84,15 +84,29 @@ export function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  const select = useCallback((id: string) => {
-    window.history.pushState({}, '', `/spec/${encodeURIComponent(id)}`);
-    setSelectedId(id);
+  // pushState throws on the opaque file:// origin (a report opened as a local
+  // file), so we guard it: navigation still works, the URL just doesn't update.
+  // On http(s)/Pages the URL updates as before.
+  const navigate = useCallback((path: string) => {
+    try {
+      window.history.pushState({}, '', path);
+    } catch {
+      /* file:// — keep in-app navigation working without a URL change */
+    }
   }, []);
 
+  const select = useCallback(
+    (id: string) => {
+      navigate(`/spec/${encodeURIComponent(id)}`);
+      setSelectedId(id);
+    },
+    [navigate],
+  );
+
   const back = useCallback(() => {
-    window.history.pushState({}, '', '/');
+    navigate('/');
     setSelectedId(null);
-  }, []);
+  }, [navigate]);
 
   if (error) {
     return (
@@ -116,7 +130,7 @@ export function App() {
     : undefined;
 
   if (selectedId && selected) {
-    return <SpecDetail spec={selected} report={report} onBack={back} />;
+    return <SpecDetail spec={selected} report={report} onBack={back} meta={META} />;
   }
   // In a static export there is no server to refresh from and no live git to
   // diff against, so both affordances are withheld (the props are omitted).

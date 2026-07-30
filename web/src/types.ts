@@ -8,6 +8,12 @@ export interface Finding {
   message: string;
 }
 
+// A `spec:<id>` reference: the test file and 1-based line it sits on.
+export interface Ref {
+  file: string;
+  line: number;
+}
+
 export interface SpecStatus {
   id: string;
   title: string;
@@ -15,6 +21,7 @@ export interface SpecStatus {
   path: string;
   body?: string;
   tests: string[] | null;
+  refs?: Ref[] | null;
   covers?: string[];
   covered: boolean;
   coversOk: boolean;
