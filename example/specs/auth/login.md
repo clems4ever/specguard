@@ -1,6 +1,7 @@
 ---
 id: auth-login
 title: A user can log in with email and password
+parent: auth-access
 status: active
 covers:
   - server/auth.go

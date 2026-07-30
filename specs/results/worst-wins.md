@@ -1,6 +1,7 @@
 ---
 id: results-worst-wins
 title: A spec fails if any covering test fails
+parent: results-overlay
 covers:
   - internal/results
 ---

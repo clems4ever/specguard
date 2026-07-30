@@ -320,6 +320,46 @@ code {
   flex-direction: column;
   gap: 8px;
 }
+
+/* ---- derivation tree ---- */
+.tree-node {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tree-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.tree-row .spec-row {
+  flex: 1;
+}
+.tree-toggle {
+  flex: 0 0 22px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+.tree-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.tree-toggle-spacer {
+  flex: 0 0 22px;
+}
+/* Children indent under their parent, with a guide line down the branch. */
+.tree-children {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 11px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
 .spec-row {
   display: flex;
   align-items: center;
@@ -492,6 +532,59 @@ code {
 }
 .back {
   margin-bottom: 20px;
+}
+.refines {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 5px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+.refines:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.refines strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.detail-children {
+  margin: 14px 0;
+}
+.children-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.child-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+.child-link:hover {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+.child-link code {
+  margin-left: auto;
+  color: var(--muted);
 }
 .detail-head {
   display: flex;

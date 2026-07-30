@@ -1,6 +1,7 @@
 ---
 id: results-screenshots
 title: Screenshots attach to their spec
+parent: results-overlay
 covers:
   - internal/results
 ---

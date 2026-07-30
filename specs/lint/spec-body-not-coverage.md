@@ -1,6 +1,7 @@
 ---
 id: lint-spec-body-not-coverage
 title: A token in a spec body is not coverage
+parent: lint-traceability
 covers:
   - internal/lint
 ---

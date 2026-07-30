@@ -1,12 +1,41 @@
 import { test, expect } from '@playwright/test';
 
 // These run against the real Go server serving the real built UI and the live
-// report for the bundled example project (8 specs, one draft → PASS with one
+// report for the bundled example project (9 specs, one draft → PASS with one
 // warning). No mocking — this is the full stack end to end.
 
 // The tags below trace these tests to specguard's own UI specs, and the
 // attached screenshots are published as those specs' galleries — so the
 // self-report shows the very screens these tests exercise.
+test('specs derive from one another', { tag: '@spec:spec-hierarchy' }, async ({ page }, testInfo) => {
+  await page.goto('/');
+
+  // The auth area is a tree: an "account access" capability over the concrete
+  // login / logout / session specs.
+  const parentRow = page.getByTestId('spec-row-auth-access');
+  await expect(parentRow).toBeVisible();
+  // The parent reads as covered though it has no direct test of its own — it is
+  // verified by its children.
+  await expect(parentRow.getByTestId('badge-covered')).toBeVisible();
+
+  // Children are nested under it and collapse away with the parent's toggle.
+  const child = page.getByTestId('spec-row-auth-login');
+  await expect(child).toBeVisible();
+  await page.getByTestId('tree-toggle-auth-access').click();
+  await expect(child).toBeHidden();
+  await page.getByTestId('tree-toggle-auth-access').click();
+
+  await testInfo.attach('hierarchy', { body: await page.screenshot(), contentType: 'image/png' });
+
+  // Drilling into a child shows a breadcrumb back up to the parent intent.
+  await child.click();
+  await expect(page.getByTestId('refines')).toContainText('Refines');
+  await page.getByTestId('refines').click();
+  await expect(page.getByTestId('detail-title')).toHaveText('Users can access their account');
+  // …and the parent lists its refinements.
+  await expect(page.getByTestId('child-link-auth-login')).toBeVisible();
+});
+
 test('the report orients a first-time reader', { tag: '@spec:ui-orientation' }, async ({ page }, testInfo) => {
   await page.goto('/');
 
@@ -47,7 +76,7 @@ test('dashboard shows the example project report', { tag: '@spec:ui-dashboard' }
   await expect(banner).toContainText('PASS');
   await expect(banner).toContainText('0 errors');
   await expect(banner).toContainText('1 warning');
-  await expect(banner).toContainText('8 specs');
+  await expect(banner).toContainText('9 specs');
 
   // 100% coverage (drafts excluded from the denominator).
   await expect(page.getByText('100%')).toBeVisible();

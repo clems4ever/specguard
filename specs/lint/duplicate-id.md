@@ -1,6 +1,7 @@
 ---
 id: lint-duplicate-id
 title: Duplicate spec ids are rejected
+parent: lint-traceability
 covers:
   - internal/lint
 ---

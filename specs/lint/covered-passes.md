@@ -1,6 +1,7 @@
 ---
 id: lint-covered-passes
 title: A spec referenced by a test is covered
+parent: lint-traceability
 covers:
   - internal/lint
 ---

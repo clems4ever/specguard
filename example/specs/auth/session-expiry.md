@@ -1,6 +1,7 @@
 ---
 id: auth-session-expiry
 title: Sessions expire after 24h of inactivity
+parent: auth-access
 status: active
 covers:
   - server/auth.go

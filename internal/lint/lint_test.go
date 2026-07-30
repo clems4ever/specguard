@@ -255,3 +255,69 @@ func TestAreaOverviewLoadedAndNotASpec(t *testing.T) {
 		t.Fatalf("description = %q", rep.Areas[0].Description)
 	}
 }
+
+// spec:spec-hierarchy
+func TestParentCoveredByChildrenNeedsNoOwnTest(t *testing.T) {
+	rep := run(t, map[string]string{
+		// A parent with no direct test of its own...
+		"specs/cap.md":       "---\nid: cap\ntitle: A capability\n---\nbody\n",
+		"specs/leaf.md":      "---\nid: cap-leaf\ntitle: A leaf\nparent: cap\ncovers:\n  - internal/x\n---\nbody\n",
+		"internal/x.go":      "package x\n",
+		"internal/x_test.go": "package x\n// %SPEC%cap-leaf\nfunc TestX(t *testing.T){}\n",
+	})
+	if !rep.OK {
+		t.Fatalf("expected PASS (parent verified by its covered child): %+v", rep.Findings)
+	}
+	byID := map[string]SpecStatus{}
+	for _, s := range rep.Specs {
+		byID[s.ID] = s
+	}
+	if !byID["cap"].HasChild {
+		t.Fatal("parent should be marked HasChild")
+	}
+	if byID["cap-leaf"].Parent != "cap" {
+		t.Fatalf("child parent = %q", byID["cap-leaf"].Parent)
+	}
+}
+
+// spec:spec-hierarchy
+func TestParentWithUncoveredLeafStillFailsAtTheLeaf(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/cap.md":  "---\nid: cap\ntitle: A capability\n---\nbody\n",
+		"specs/leaf.md": "---\nid: cap-leaf\ntitle: A leaf\nparent: cap\n---\nbody\n",
+	})
+	if rep.OK {
+		t.Fatal("expected FAIL: the leaf is uncovered")
+	}
+	fs := findings(rep, "uncovered-spec")
+	if len(fs) != 1 || fs[0].Spec != "cap-leaf" {
+		t.Fatalf("want one uncovered-spec on the leaf, got %+v", rep.Findings)
+	}
+}
+
+func TestUndefinedParentFails(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/leaf.md":      "---\nid: leaf\ntitle: Leaf\nparent: ghost\ncovers:\n  - internal/x\n---\nbody\n",
+		"internal/x.go":      "package x\n",
+		"internal/x_test.go": "package x\n// %SPEC%leaf\nfunc TestX(t *testing.T){}\n",
+	})
+	if rep.OK {
+		t.Fatal("expected FAIL for undefined parent")
+	}
+	if len(findings(rep, "undefined-parent")) != 1 {
+		t.Fatalf("want one undefined-parent, got %+v", rep.Findings)
+	}
+}
+
+func TestParentCycleFails(t *testing.T) {
+	rep := run(t, map[string]string{
+		"specs/a.md": "---\nid: a\ntitle: A\nparent: b\n---\nbody\n",
+		"specs/b.md": "---\nid: b\ntitle: B\nparent: a\n---\nbody\n",
+	})
+	if rep.OK {
+		t.Fatal("expected FAIL for a parent cycle")
+	}
+	if len(findings(rep, "parent-cycle")) == 0 {
+		t.Fatalf("want a parent-cycle finding, got %+v", rep.Findings)
+	}
+}

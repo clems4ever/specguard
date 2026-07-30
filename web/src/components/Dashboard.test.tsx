@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dashboard } from './Dashboard';
-import { mixedReport, resultsReport } from '../test/fixtures';
+import { mixedReport, resultsReport, spec } from '../test/fixtures';
 
 function renderDash(overrides = {}) {
   const onSelect = vi.fn();
@@ -60,6 +60,32 @@ describe('Dashboard', () => {
     expect(within(screen.getByTestId('area-auth')).getByText('Auth')).toBeInTheDocument();
     // Areas without an overview render no description.
     expect(screen.queryByTestId('area-desc-tasks')).not.toBeInTheDocument();
+  });
+
+  it('renders a derivation tree and collapses a parent to hide its children', async () => {
+    const report = {
+      ok: true,
+      testFiles: 1,
+      findings: [],
+      specs: [
+        spec({ id: 'cap', title: 'Capability', path: 'specs/x/cap.md', hasChild: true }),
+        spec({
+          id: 'cap-a',
+          title: 'Leaf A',
+          path: 'specs/x/a.md',
+          parent: 'cap',
+          covered: true,
+          tests: ['a_test.go'],
+        }),
+      ],
+    };
+    render(<Dashboard report={report} onSelect={vi.fn()} onRefresh={vi.fn()} />);
+    expect(screen.getByTestId('tree-node-cap')).toBeInTheDocument();
+    expect(screen.getByTestId('spec-row-cap-a')).toBeInTheDocument();
+    // The parent, though it has no direct test, reads covered via its child.
+    expect(within(screen.getByTestId('spec-row-cap')).getByTestId('badge-covered')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('tree-toggle-cap'));
+    expect(screen.queryByTestId('spec-row-cap-a')).not.toBeInTheDocument();
   });
 
   it('offers a table-of-contents chip per area', () => {

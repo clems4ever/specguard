@@ -1,6 +1,7 @@
 ---
 id: lint-uncovered-is-error
 title: An uncovered spec fails the build
+parent: lint-traceability
 covers:
   - internal/lint
 ---

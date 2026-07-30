@@ -1,6 +1,7 @@
 ---
 id: lint-strict-promotes
 title: Strict mode promotes warnings to errors
+parent: lint-traceability
 covers:
   - internal/lint
 ---

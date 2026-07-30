@@ -1,6 +1,7 @@
 ---
 id: lint-ref-locations
 title: Each reference records its file and line
+parent: lint-traceability
 covers:
   - internal/lint
 ---

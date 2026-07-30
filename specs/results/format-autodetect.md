@@ -1,6 +1,7 @@
 ---
 id: results-format-autodetect
 title: Result formats are auto-detected
+parent: results-overlay
 covers:
   - internal/results
 ---

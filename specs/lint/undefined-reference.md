@@ -1,6 +1,7 @@
 ---
 id: lint-undefined-reference
 title: A reference to an unknown spec is an error
+parent: lint-traceability
 covers:
   - internal/lint
 ---

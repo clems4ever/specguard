@@ -1,6 +1,7 @@
 ---
 id: results-playwright-tag
 title: Playwright results map by tag
+parent: results-overlay
 covers:
   - internal/results
 ---

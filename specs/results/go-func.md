@@ -1,6 +1,7 @@
 ---
 id: results-go-func
 title: Go results map by test function
+parent: results-overlay
 covers:
   - internal/results
 ---

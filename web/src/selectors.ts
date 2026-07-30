@@ -40,7 +40,10 @@ export type SpecState =
  * Otherwise it falls back to coverage state.
  */
 export function specState(s: SpecStatus, hasResults = false): SpecState {
-  if (!s.covered) return s.draft ? 'draft' : 'uncovered';
+  // A parent spec is verified by its children, so it counts as covered even
+  // without a direct test. (Its accurate subtree state is computed separately by
+  // subtreeRollup; this is the fallback when a parent is shown on its own.)
+  if (!s.covered && !s.hasChild) return s.draft ? 'draft' : 'uncovered';
   if (hasResults) {
     if (s.result === 'failed') return 'failing';
     if (s.result === 'passed') return 'passing';
@@ -92,6 +95,74 @@ export function areaRollup(
   return { total: specs.length, state: worst, allGood: STATE_SEVERITY[worst] === 0 };
 }
 
+// A spec and its refinements — the derivation tree built from `parent` links.
+export interface SpecNode {
+  spec: SpecStatus;
+  children: SpecNode[];
+  depth: number;
+}
+
+/**
+ * Build a forest from `parent` links. A spec is a root within `specs` when it
+ * has no parent, or its parent is not in this set (e.g. filtered out, or in
+ * another area). Order is stable (by id) at every level, and a malformed cycle
+ * can never loop — a node is only ever expanded once.
+ */
+export function buildTree(specs: SpecStatus[]): SpecNode[] {
+  const byId = new Map(specs.map((s) => [s.id, s]));
+  const kids = new Map<string, SpecStatus[]>();
+  const roots: SpecStatus[] = [];
+  for (const s of specs) {
+    if (s.parent && byId.has(s.parent)) {
+      (kids.get(s.parent) ?? kids.set(s.parent, []).get(s.parent)!).push(s);
+    } else {
+      roots.push(s);
+    }
+  }
+  const byId2 = (a: SpecStatus, b: SpecStatus) => a.id.localeCompare(b.id);
+  const seen = new Set<string>();
+  const build = (s: SpecStatus, depth: number): SpecNode => {
+    seen.add(s.id);
+    const children = (kids.get(s.id) ?? [])
+      .filter((c) => !seen.has(c.id))
+      .sort(byId2)
+      .map((c) => build(c, depth + 1));
+    return { spec: s, children, depth };
+  };
+  const forest = roots.sort(byId2).map((r) => build(r, 0));
+  // Any spec not reached from a root (only possible under a parent cycle, which
+  // the linter rejects) is surfaced as its own root so it never vanishes.
+  for (const s of specs.filter((s) => !seen.has(s.id)).sort(byId2)) {
+    forest.push(build(s, 0));
+  }
+  return forest;
+}
+
+/**
+ * The state a node should show: for a leaf, its own state; for a parent, the
+ * worst state anywhere in its subtree — so an intent reads green only when
+ * everything derived from it is proven. `count` is the number of descendants.
+ */
+export function subtreeRollup(
+  node: SpecNode,
+  hasResults = false,
+): { state: SpecState; count: number } {
+  // A leaf shows its own state. A parent starts from a good baseline — its own
+  // (possibly test-less) state must not drag the rollup down — and takes the
+  // worst state found among its descendants.
+  if (node.children.length === 0) {
+    return { state: specState(node.spec, hasResults), count: 0 };
+  }
+  let state: SpecState = hasResults ? 'passing' : 'covered';
+  let count = 0;
+  for (const c of node.children) {
+    const r = subtreeRollup(c, hasResults);
+    count += 1 + r.count;
+    if (STATE_SEVERITY[r.state] > STATE_SEVERITY[state]) state = r.state;
+  }
+  return { state, count };
+}
+
 /** The area a spec belongs to, taken from `specs/<area>/<file>.md`. */
 export function specArea(s: SpecStatus): string {
   const parts = s.path.split('/');
@@ -129,13 +200,16 @@ export function summarize(report: Report): Summary {
   let skipped = 0;
   let notRun = 0;
   for (const s of specs) {
+    // A parent spec is verified by its children, so it counts as covered. Its
+    // pass/fail is a roll-up of its leaves (counted below), not a direct result.
+    const isCovered = s.covered || !!s.hasChild;
     // Coverage counts are independent of any test run.
-    if (!s.covered) {
+    if (!isCovered) {
       if (s.draft) drafts++;
       else uncovered++;
     } else {
       covered++;
-      if (hasResults) {
+      if (hasResults && !s.hasChild) {
         if (s.result === 'failed') failing++;
         else if (s.result === 'passed') passing++;
         else if (s.result === 'skipped') skipped++;

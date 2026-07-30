@@ -19,7 +19,7 @@ test('static report boots offline from the embedded data', async ({ page }) => {
 
   const banner = page.getByTestId('status-banner');
   await expect(banner).toContainText('PASS');
-  await expect(banner).toContainText('8 specs');
+  await expect(banner).toContainText('9 specs');
   await expect(page.getByText('100%')).toBeVisible();
   await expect(page.getByTestId('area-auth')).toBeVisible();
 
