@@ -1,0 +1,6 @@
+# specguard lints ITSELF: its behaviours live in specs/, pinned to the Go tests
+# under internal/. The example/ project has its own specs and is excluded here.
+specsDir: specs
+tests:
+  - "internal/**/*_test.go"
+  - "cmd/**/*_test.go"

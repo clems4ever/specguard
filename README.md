@@ -110,6 +110,15 @@ specguard report -results playwright.json -assets public/assets -o public/index.
 push, so anyone can explore the specs at a stable URL without checking out the
 repo. (Enable it via **Settings → Pages → Source = "GitHub Actions"**.)
 
+## Dogfooding
+
+specguard runs on itself. Its own behaviours live in [`specs/`](specs), pinned to
+the Go tests under `internal/` via `// spec:<id>` comments, and gated in CI
+(`specguard -C .`). The published report at the Pages URL above **is** specguard's
+own catalog — every spec passing, deep-linked to the test that proves it, with
+real pass/fail from its own `go test` run. (The [`example/`](example) Taskflow
+project is a separate fixture with its own specs.)
+
 ## Config — `.specguard.yml`
 
 ```yaml

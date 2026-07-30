@@ -19,7 +19,9 @@ jobs:
         run: go test ./...
       - name: Gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-      - name: specguard self-lint (the example project must stay green)
+      - name: specguard dogfoods itself (its own specs must stay covered)
+        run: go run ./cmd/specguard -C .
+      - name: the bundled example project must stay green too
         run: go run ./cmd/specguard -C example
 
   web:

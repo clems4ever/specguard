@@ -4,10 +4,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/clems4ever/specguard/internal/lint"
 )
+
+// fixture expands the %SPEC% placeholder in test data to the real token, so
+// specguard doesn't read its own fixtures as references when it lints itself.
+func fixture(s string) string { return strings.ReplaceAll(s, "%SPEC%", "spec:") }
 
 func run(t *testing.T, dir, name string, args ...string) {
 	t.Helper()
@@ -24,7 +29,7 @@ func write(t *testing.T, dir, rel, content string) {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte(fixture(content)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -33,6 +38,7 @@ func write(t *testing.T, dir, rel, content string) {
 // covered spec, then an uncommitted working-tree change that adds a second,
 // uncovered spec. The diff must report exactly that — an added regression —
 // computed from a base checkout via worktree.
+// spec:diff-regression
 func TestDiffAgainstGitBase(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -44,7 +50,7 @@ func TestDiffAgainstGitBase(t *testing.T) {
 
 	write(t, dir, ".specguard.yml", "specsDir: specs\ntests:\n  - \"**/*_test.go\"\n")
 	write(t, dir, "specs/a.md", "---\nid: a\ntitle: A\ncovers:\n  - pkg\n---\nbody\n")
-	write(t, dir, "pkg/a_test.go", "package pkg\n// spec:a\n")
+	write(t, dir, "pkg/a_test.go", "package pkg\n// %SPEC%a\n")
 	run(t, dir, "git", "add", "-A")
 	run(t, dir, "git", "commit", "-qm", "base")
 

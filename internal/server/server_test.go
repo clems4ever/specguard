@@ -12,6 +12,10 @@ import (
 	"github.com/clems4ever/specguard/internal/lint"
 )
 
+// fixture expands the %SPEC% placeholder in test data to the real token, so
+// specguard doesn't read its own fixtures as references when it lints itself.
+func fixture(s string) string { return strings.ReplaceAll(s, "%SPEC%", "spec:") }
+
 func writeTree(t *testing.T, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -20,7 +24,7 @@ func writeTree(t *testing.T, files map[string]string) string {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(p, []byte(fixture(content)), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -36,10 +40,11 @@ func newTestServer(t *testing.T, files map[string]string, webDir string) *httpte
 	return ts
 }
 
+// spec:server-live-report
 func TestReportEndpointReturnsLiveJSON(t *testing.T) {
 	ts := newTestServer(t, map[string]string{
 		"specs/edit.md":            "---\nid: skills-edit\ntitle: Editing persists\n---\n## Why\nbecause\n",
-		"internal/skill/x_test.go": "// spec:skills-edit\n",
+		"internal/skill/x_test.go": "// %SPEC%skills-edit\n",
 	}, "")
 
 	resp, err := http.Get(ts.URL + "/api/report")
@@ -73,7 +78,7 @@ func TestReportEndpointReturnsLiveJSON(t *testing.T) {
 func TestReportReflectsChangesBetweenRequests(t *testing.T) {
 	root := writeTree(t, map[string]string{
 		"specs/edit.md":            "---\nid: skills-edit\ntitle: t\n---\nbody\n",
-		"internal/skill/x_test.go": "// spec:skills-edit\n",
+		"internal/skill/x_test.go": "// %SPEC%skills-edit\n",
 	})
 	ts := httptest.NewServer(New(lint.DefaultConfig(root), "").Handler())
 	t.Cleanup(ts.Close)
@@ -127,6 +132,7 @@ func TestCORSHeaderPresent(t *testing.T) {
 	}
 }
 
+// spec:server-spa-fallback
 func TestStaticSPAFallback(t *testing.T) {
 	web := writeTree(t, map[string]string{
 		"index.html":    "<!doctype html><title>specguard</title>",
@@ -161,7 +167,7 @@ func TestDiffDisabledWithoutGit(t *testing.T) {
 	// A tempdir tree is not a git repo → /api/diff reports disabled, never errors.
 	ts := newTestServer(t, map[string]string{
 		"specs/a.md":         "---\nid: a\ntitle: A\n---\n",
-		"internal/x_test.go": "// spec:a\n",
+		"internal/x_test.go": "// %SPEC%a\n",
 	}, "")
 	resp, err := http.Get(ts.URL + "/api/diff")
 	if err != nil {
@@ -177,10 +183,11 @@ func TestDiffDisabledWithoutGit(t *testing.T) {
 	}
 }
 
+// spec:server-badge
 func TestBadgeSVG(t *testing.T) {
 	ts := newTestServer(t, map[string]string{
 		"specs/a.md":         "---\nid: a\ntitle: A\n---\n",
-		"internal/x_test.go": "// spec:a\n",
+		"internal/x_test.go": "// %SPEC%a\n",
 	}, "")
 	resp, err := http.Get(ts.URL + "/api/badge")
 	if err != nil {

@@ -86,6 +86,7 @@ func TestEditedDefinition(t *testing.T) {
 	}
 }
 
+// spec:diff-impl-changed
 func TestImplChangedWhenCoveredCodeTouched(t *testing.T) {
 	s := spec("a", true, covers("internal/hub"))
 	base := rep(true, s)

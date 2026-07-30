@@ -2,6 +2,7 @@ package spec
 
 import "testing"
 
+// spec:spec-frontmatter
 func TestParseValid(t *testing.T) {
 	s, err := Parse([]byte("---\nid: skills-edit\ntitle: Editing persists\nstatus: active\ncovers:\n  - internal/skill\n  - web/e2e/skills.spec.ts\n---\n\n# body\n"))
 	if err != nil {
@@ -41,6 +42,7 @@ func TestParseBadStatus(t *testing.T) {
 	}
 }
 
+// spec:spec-frontmatter-invalid
 func TestParseMissingID(t *testing.T) {
 	if _, err := Parse([]byte("---\ntitle: No id\n---\n")); err == nil {
 		t.Fatal("expected error for missing id")

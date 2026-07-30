@@ -3,8 +3,15 @@ package lint
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// fixture expands the %SPEC% placeholder used in this file's test data to the
+// real reference token. The placeholder keeps the literal token out of the Go
+// source, so specguard doesn't read its own fixtures as real references when it
+// lints itself (dogfooding).
+func fixture(s string) string { return strings.ReplaceAll(s, "%SPEC%", "spec:") }
 
 // writeTree materializes a map of relative path -> contents under a temp dir.
 func writeTree(t *testing.T, files map[string]string) string {
@@ -15,7 +22,7 @@ func writeTree(t *testing.T, files map[string]string) string {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(p, []byte(fixture(content)), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -43,11 +50,12 @@ func findings(rep *Report, rule string) []Finding {
 	return out
 }
 
+// spec:lint-covered-passes
 func TestCoveredSpecPasses(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/edit.md":            "---\nid: skills-edit\ntitle: Editing persists\ncovers:\n  - internal/skill\n---\nbody\n",
 		"internal/skill/x.go":      "package skill\n",
-		"internal/skill/x_test.go": "package skill\n// spec:skills-edit\nfunc TestX(t *testing.T){}\n",
+		"internal/skill/x_test.go": "package skill\n// %SPEC%skills-edit\nfunc TestX(t *testing.T){}\n",
 	})
 	if !rep.OK {
 		t.Fatalf("expected PASS, got findings: %+v", rep.Findings)
@@ -57,6 +65,7 @@ func TestCoveredSpecPasses(t *testing.T) {
 	}
 }
 
+// spec:lint-uncovered-is-error
 func TestUncoveredSpecFails(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/edit.md":            "---\nid: skills-edit\ntitle: Editing persists\n---\nbody\n",
@@ -70,6 +79,7 @@ func TestUncoveredSpecFails(t *testing.T) {
 	}
 }
 
+// spec:lint-draft-uncovered-warns
 func TestUncoveredDraftWarnsNotFails(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/planned.md":   "---\nid: planned\ntitle: Planned\nstatus: draft\n---\nbody\n",
@@ -93,7 +103,7 @@ func TestUncoveredDraftWarnsNotFails(t *testing.T) {
 func TestCoveredDraftIsClean(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/planned.md":   "---\nid: planned\ntitle: Planned\nstatus: draft\n---\nbody\n",
-		"internal/x_test.go": "// spec:planned\n",
+		"internal/x_test.go": "// %SPEC%planned\n",
 	})
 	if !rep.OK || len(rep.Findings) != 0 {
 		t.Fatalf("a covered draft should be clean, got %+v", rep.Findings)
@@ -103,7 +113,7 @@ func TestCoveredDraftIsClean(t *testing.T) {
 func TestSpecPathIsCleanRelative(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/sharing/perms.md": "---\nid: p\ntitle: t\n---\nbody\n",
-		"internal/x_test.go":     "// spec:p\n",
+		"internal/x_test.go":     "// %SPEC%p\n",
 	})
 	if got := rep.Specs[0].Path; got != "specs/sharing/perms.md" {
 		t.Fatalf("spec path = %q, want clean relative path (no '..')", got)
@@ -113,18 +123,19 @@ func TestSpecPathIsCleanRelative(t *testing.T) {
 func TestBodyIsCarried(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/e.md":         "---\nid: e\ntitle: t\n---\n## Why\nbecause\n",
-		"internal/x_test.go": "// spec:e\n",
+		"internal/x_test.go": "// %SPEC%e\n",
 	})
 	if rep.Specs[0].Body != "## Why\nbecause\n" {
 		t.Fatalf("body not carried: %q", rep.Specs[0].Body)
 	}
 }
 
+// spec:lint-undefined-reference
 func TestUndefinedReferenceFails(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/edit.md":          "---\nid: skills-edit\ntitle: t\n---\nbody\n",
-		"web/e2e/skills.spec.ts": "test('x', { tag: '@spec:skills-edit' }, ()=>{})\n",
-		"web/e2e/other.spec.ts":  "test('y', { tag: '@spec:does-not-exist' }, ()=>{})\n",
+		"web/e2e/skills.spec.ts": "test('x', { tag: '@%SPEC%skills-edit' }, ()=>{})\n",
+		"web/e2e/other.spec.ts":  "test('y', { tag: '@%SPEC%does-not-exist' }, ()=>{})\n",
 	})
 	if rep.OK {
 		t.Fatal("expected FAIL for undefined reference")
@@ -135,21 +146,23 @@ func TestUndefinedReferenceFails(t *testing.T) {
 	}
 }
 
+// spec:lint-duplicate-id
 func TestDuplicateIDFails(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/a.md":         "---\nid: dup\ntitle: A\n---\n",
 		"specs/b.md":         "---\nid: dup\ntitle: B\n---\n",
-		"internal/x_test.go": "// spec:dup\n",
+		"internal/x_test.go": "// %SPEC%dup\n",
 	})
 	if len(findings(rep, "duplicate-id")) != 1 {
 		t.Fatalf("want one duplicate-id finding, got %+v", rep.Findings)
 	}
 }
 
+// spec:lint-covers-unmatched
 func TestCoversUnmatchedWarns(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/edit.md":      "---\nid: e\ntitle: t\ncovers:\n  - internal/ghost\n---\n",
-		"internal/x_test.go": "// spec:e\n",
+		"internal/x_test.go": "// %SPEC%e\n",
 	})
 	fs := findings(rep, "covers-unmatched")
 	if len(fs) != 1 || fs[0].Severity != Warning {
@@ -160,10 +173,11 @@ func TestCoversUnmatchedWarns(t *testing.T) {
 	}
 }
 
+// spec:lint-strict-promotes
 func TestStrictPromotesWarning(t *testing.T) {
 	root := writeTree(t, map[string]string{
 		"specs/edit.md":      "---\nid: e\ntitle: t\ncovers:\n  - internal/ghost\n---\n",
-		"internal/x_test.go": "// spec:e\n",
+		"internal/x_test.go": "// %SPEC%e\n",
 	})
 	cfg := DefaultConfig(root)
 	cfg.Strict = true
@@ -176,22 +190,24 @@ func TestStrictPromotesWarning(t *testing.T) {
 	}
 }
 
+// spec:lint-spec-body-not-coverage
 func TestSpecFilesNotScannedAsTests(t *testing.T) {
 	// A stray token in the spec body must not count as coverage.
 	rep := run(t, map[string]string{
-		"specs/edit.test.ts.md": "---\nid: e\ntitle: t\n---\nsee spec:e in prose\n",
+		"specs/edit.test.ts.md": "---\nid: e\ntitle: t\n---\nsee %SPEC%e in prose\n",
 	})
 	if rep.OK {
 		t.Fatal("spec body reference must not satisfy coverage")
 	}
 }
 
+// spec:lint-ref-locations
 func TestRefsCaptureFileAndLine(t *testing.T) {
 	rep := run(t, map[string]string{
 		"specs/edit.md": "---\nid: skills-edit\ntitle: Editing persists\n---\nbody\n",
-		// spec:skills-edit sits on line 3; a second reference on line 5.
-		"internal/skill/x_test.go": "package skill\n\n// spec:skills-edit\nfunc TestA(t *testing.T){}\n// spec:skills-edit\nfunc TestB(t *testing.T){}\n",
-		"web/e2e/x.spec.ts":        "import {test} from '@playwright/test';\ntest('edit', { tag: '@spec:skills-edit' }, async () => {});\n",
+		// the first reference sits on line 3, a second on line 5.
+		"internal/skill/x_test.go": "package skill\n\n// %SPEC%skills-edit\nfunc TestA(t *testing.T){}\n// %SPEC%skills-edit\nfunc TestB(t *testing.T){}\n",
+		"web/e2e/x.spec.ts":        "import {test} from '@playwright/test';\ntest('edit', { tag: '@%SPEC%skills-edit' }, async () => {});\n",
 	})
 	if len(rep.Specs) != 1 {
 		t.Fatalf("want 1 spec, got %d", len(rep.Specs))
