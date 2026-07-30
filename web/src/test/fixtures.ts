@@ -17,6 +17,7 @@ export function spec(partial: Partial<SpecStatus> & { id: string }): SpecStatus 
 export const mixedReport: Report = {
   ok: false,
   testFiles: 6,
+  areas: [{ name: 'auth', title: 'Auth', description: 'Signing in and out.' }],
   specs: [
     spec({
       id: 'auth-login',

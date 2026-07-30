@@ -307,6 +307,11 @@ code {
 .area-count {
   font-size: 12px;
 }
+.area-desc {
+  margin: -4px 0 10px 24px;
+  font-size: 12.5px;
+  max-width: 76ch;
+}
 .area-header .badge {
   margin-left: auto;
 }

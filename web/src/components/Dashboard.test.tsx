@@ -52,6 +52,16 @@ describe('Dashboard', () => {
     expect(within(draft).getByTestId('badge-draft')).toBeInTheDocument();
   });
 
+  it('shows an area overview when one is provided', () => {
+    renderDash();
+    const desc = screen.getByTestId('area-desc-auth');
+    expect(desc).toHaveTextContent('Signing in and out.');
+    // The friendly title is used for the heading.
+    expect(within(screen.getByTestId('area-auth')).getByText('Auth')).toBeInTheDocument();
+    // Areas without an overview render no description.
+    expect(screen.queryByTestId('area-desc-tasks')).not.toBeInTheDocument();
+  });
+
   it('offers a table-of-contents chip per area', () => {
     renderDash();
     const toc = screen.getByTestId('toc');

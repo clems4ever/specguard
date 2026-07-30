@@ -131,12 +131,24 @@ type SpecStatus struct {
 	Artifacts []Artifact `json:"artifacts,omitempty"`
 }
 
+// AreaInfo is an optional human overview of a spec area (a `specs/<area>/`
+// directory), sourced from a `specs/<area>/_area.md` file. It lets the report
+// explain what a group of specs is about instead of showing a bare name.
+type AreaInfo struct {
+	Name        string `json:"name"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
 // Report is the full result of a run.
 type Report struct {
 	Specs     []SpecStatus `json:"specs"`
 	Findings  []Finding    `json:"findings"`
 	TestFiles int          `json:"testFiles"`
 	OK        bool         `json:"ok"`
+	// Areas carries the optional per-area overviews (see AreaInfo). Only areas
+	// that supply an `_area.md` appear here.
+	Areas []AreaInfo `json:"areas,omitempty"`
 	// HasResults is true when a test run was ingested, so the UI knows to show
 	// pass/fail state rather than coverage alone.
 	HasResults bool `json:"hasResults,omitempty"`
@@ -163,9 +175,10 @@ func Run(cfg Config) (*Report, error) {
 		testGlobs[i] = compileGlob(g)
 	}
 
-	// 1. Parse every spec file.
+	// 1. Parse every spec file, plus any optional per-area overviews.
 	specs, findings := loadSpecs(cfg)
 	rep.Findings = append(rep.Findings, findings...)
+	rep.Areas = loadAreas(cfg)
 	byID := map[string]*spec.Spec{}
 	for _, s := range specs {
 		byID[s.ID] = s
@@ -298,6 +311,11 @@ func loadSpecs(cfg Config) ([]*spec.Spec, []Finding) {
 		if d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
 			return nil
 		}
+		// Underscore-prefixed files are reserved for non-spec docs (e.g. an
+		// area overview, `_area.md`); they are not specs.
+		if strings.HasPrefix(d.Name(), "_") {
+			return nil
+		}
 		rel := relPath(cfg.Root, path)
 		s, perr := spec.ParseFile(path)
 		if perr != nil {
@@ -324,6 +342,32 @@ func loadSpecs(cfg Config) ([]*spec.Spec, []Finding) {
 		})
 	}
 	return specs, findings
+}
+
+// loadAreas parses every `_area.md` overview under the specs dir, keyed by the
+// area (its parent directory name). Returns them sorted by name. A malformed
+// overview is skipped silently — it is optional metadata, not a spec, so it
+// never fails the build.
+func loadAreas(cfg Config) []AreaInfo {
+	dir := filepath.Join(cfg.Root, cfg.SpecsDir)
+	var areas []AreaInfo
+	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || d.Name() != "_area.md" {
+			return nil
+		}
+		doc, perr := spec.ParseAreaFile(path)
+		if perr != nil {
+			return nil
+		}
+		areas = append(areas, AreaInfo{
+			Name:        filepath.Base(filepath.Dir(path)),
+			Title:       doc.Title,
+			Description: doc.Description,
+		})
+		return nil
+	})
+	sort.Slice(areas, func(i, j int) bool { return areas[i].Name < areas[j].Name })
+	return areas
 }
 
 func anyFileMatches(entry string, files []string) bool {
