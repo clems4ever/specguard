@@ -82,4 +82,17 @@ describe('SpecDetail', () => {
     // The covering test shows a failed dot.
     expect(within(screen.getByTestId('test-list')).getByTestId('ref-status-failed')).toBeInTheDocument();
   });
+
+  it('renders a screenshot gallery when a spec has artifacts', () => {
+    const withShots = spec({
+      id: 'auth-login',
+      title: 'A user can log in',
+      path: 'specs/auth/login.md',
+      covered: true,
+      artifacts: [{ name: 'login', path: 'assets/specs/auth-login/0.png' }],
+    });
+    render(<SpecDetail spec={withShots} report={mixedReport} onBack={() => {}} />);
+    expect(screen.getByTestId('gallery')).toBeInTheDocument();
+    expect(screen.getByTestId('gallery-thumb-0')).toBeInTheDocument();
+  });
 });

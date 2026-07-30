@@ -55,6 +55,12 @@ jobs:
       - name: Run the example test suite (for pass/fail in the report)
         run: (cd example && go test -json ./... > "$RUNNER_TEMP/go-results.json") || true
 
+      - name: Capture demo screenshots (for per-spec galleries)
+        working-directory: web
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/demo-shots.mjs "$RUNNER_TEMP/shots"
+
       - name: Generate the static report for main
         run: |
           mkdir -p public
@@ -63,7 +69,8 @@ jobs:
             -branch "${{ github.ref_name }}" \
             -commit "${{ github.sha }}" \
             -repo "${{ github.repository }}" \
-            -results "$RUNNER_TEMP/go-results.json" \
+            -results "$RUNNER_TEMP/go-results.json,$RUNNER_TEMP/shots/results.json" \
+            -assets public/assets -assets-base assets \
             -o public/index.html
           # Serve the same app for any path so deep links (/spec/<id>) resolve
           # on a hard refresh — GitHub Pages returns 404.html for unknown paths.

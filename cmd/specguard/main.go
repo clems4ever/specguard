@@ -193,6 +193,8 @@ func reportCmd(args []string) {
 		commit     = fs.String("commit", "", "commit SHA to stamp (default: detected from git)")
 		repo       = fs.String("repo", "", "repository slug to stamp (e.g. owner/name)")
 		resultsArg = fs.String("results", "", "comma-separated test result files (Playwright JSON / `go test -json`) to show pass/fail")
+		assetsDir  = fs.String("assets", "", "directory to copy test screenshots into (enables per-spec galleries; makes the report a bundle, not one file)")
+		assetsBase = fs.String("assets-base", "assets", "URL prefix the report loads copied screenshots from")
 	)
 	_ = fs.Parse(args)
 
@@ -211,6 +213,13 @@ func reportCmd(args []string) {
 			os.Exit(2)
 		}
 		set.Apply(rep)
+		// Publish any screenshots the run captured, as per-spec galleries.
+		if *assetsDir != "" {
+			if _, err := report.WriteArtifacts(rep, set.ArtifactsBySpec, *assetsDir, *assetsBase); err != nil {
+				fmt.Fprintln(os.Stderr, "specguard report: artifacts:", err)
+				os.Exit(2)
+			}
+		}
 	}
 
 	// Open the output sink up front, so we don't run a build only to fail on a

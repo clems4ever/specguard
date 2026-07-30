@@ -19,6 +19,12 @@ export interface Ref {
   status?: TestStatus; // outcome once results are ingested
 }
 
+// A visual proof (screenshot) captured by a test, attached to a spec.
+export interface Artifact {
+  name?: string;
+  path: string; // URL the report loads it from
+}
+
 export interface SpecStatus {
   id: string;
   title: string;
@@ -32,6 +38,7 @@ export interface SpecStatus {
   coversOk: boolean;
   draft: boolean;
   result?: TestStatus; // aggregate outcome of covering tests
+  artifacts?: Artifact[] | null; // screenshots captured by covering tests
 }
 
 export interface Report {

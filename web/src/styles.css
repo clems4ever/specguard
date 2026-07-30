@@ -451,6 +451,55 @@ code {
   font-size: 0.85em;
 }
 
+/* ---- screenshot gallery + lightbox ---- */
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gallery-thumb {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+}
+.gallery-thumb:hover {
+  border-color: var(--accent);
+}
+.gallery-thumb img {
+  width: 160px;
+  height: 100px;
+  object-fit: cover;
+  display: block;
+}
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  cursor: zoom-out;
+}
+.lightbox img {
+  max-width: 92vw;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+.lightbox-caption {
+  color: #ddd;
+  font-size: 13px;
+}
+
 /* ---- markdown ---- */
 .markdown {
   background: var(--panel);

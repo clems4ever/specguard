@@ -100,6 +100,14 @@ type Ref struct {
 	Status TestStatus `json:"status,omitempty"`
 }
 
+// Artifact is a visual proof captured by a test (e.g. a Playwright screenshot)
+// and attached to a spec, so a reader can SEE the behaviour, not just read it.
+// Path is the URL the report loads it from.
+type Artifact struct {
+	Name string `json:"name,omitempty"`
+	Path string `json:"path"`
+}
+
 // SpecStatus is the resolved traceability state of one spec.
 type SpecStatus struct {
 	ID     string `json:"id"`
@@ -118,6 +126,9 @@ type SpecStatus struct {
 	// Result is the aggregate outcome of this spec's covering tests, set when
 	// results are ingested (failed if any covering test failed).
 	Result TestStatus `json:"result,omitempty"`
+	// Artifacts are visual proofs (screenshots) captured by covering tests, set
+	// by `specguard report -assets` when a run carries attachments.
+	Artifacts []Artifact `json:"artifacts,omitempty"`
 }
 
 // Report is the full result of a run.
