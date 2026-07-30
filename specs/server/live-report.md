@@ -1,6 +1,7 @@
 ---
 id: server-live-report
 title: The server returns a live report
+parent: server-live
 covers:
   - internal/server
 ---

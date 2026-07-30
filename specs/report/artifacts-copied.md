@@ -1,6 +1,7 @@
 ---
 id: report-artifacts-copied
 title: Screenshots are published beside the report
+parent: report-catalog
 covers:
   - internal/report
 ---

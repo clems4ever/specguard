@@ -1,6 +1,7 @@
 ---
 id: diff-regression
 title: The delta flags coverage regressions
+parent: diff-review
 covers:
   - internal/diff
 ---

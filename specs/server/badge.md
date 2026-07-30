@@ -1,6 +1,7 @@
 ---
 id: server-badge
 title: The server serves a coverage badge
+parent: server-live
 covers:
   - internal/server
 ---

@@ -1,6 +1,7 @@
 ---
 id: diff-impl-changed
 title: A spec whose covered code changed is flagged
+parent: diff-review
 covers:
   - internal/diff
 ---

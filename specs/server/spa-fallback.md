@@ -1,6 +1,7 @@
 ---
 id: server-spa-fallback
 title: Unknown routes fall back to the app
+parent: server-live
 covers:
   - internal/server
 ---
