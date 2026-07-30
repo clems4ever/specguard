@@ -66,10 +66,30 @@ specguard            # lint ./ using ./.specguard.yml
 specguard -C ../repo # lint another tree
 specguard -json      # machine-readable report (feed a spec-overview UI)
 specguard -strict    # treat warnings (e.g. covers-unmatched) as errors
+
+specguard serve      # live spec-overview UI at http://localhost:8137
+specguard diff       # show only the specs a change touched (vs a base ref)
+specguard report     # write a self-contained, searchable HTML report
 ```
 
 Exit code is `0` when the check passes and `1` when it fails, so it drops
 straight into CI.
+
+### `specguard report` — a browsable catalog you can publish
+
+Produces one self-contained HTML file (the whole spec catalog with client-side
+search, no server) that opens offline anywhere and is stamped with the branch,
+commit and build time so a viewer knows how fresh it is.
+
+```
+specguard report -o report.html                     # from the embedded UI
+specguard report -o report.html -branch main -commit "$SHA"
+specguard report -format json -o report.json        # same data, machine-readable
+```
+
+`.github/workflows/pages.yml` publishes this for `main` to GitHub Pages on every
+push, so anyone can explore the specs at a stable URL without checking out the
+repo. (Enable it via **Settings → Pages → Source = "GitHub Actions"**.)
 
 ## Config — `.specguard.yml`
 

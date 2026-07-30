@@ -1,6 +1,8 @@
 node_modules/
 dist/
+dist-single/
 playwright-report/
 test-results/
 *.tsbuildinfo
 .e2e-specguard
+.e2e-report.html

@@ -8,17 +8,21 @@
 //	specguard [flags]         run the check and print a report (exit 1 on failure)
 //	specguard serve [flags]   serve the report over HTTP for the web UI
 //	specguard diff [flags]    show only the specs a change touched (vs a base ref)
+//	specguard report [flags]  write a self-contained, browsable HTML report
 package main
 
 import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/clems4ever/specguard/internal/diff"
 	"github.com/clems4ever/specguard/internal/lint"
+	"github.com/clems4ever/specguard/internal/report"
 	"github.com/clems4ever/specguard/internal/server"
 )
 
@@ -30,6 +34,9 @@ func main() {
 			return
 		case "diff":
 			diffCmd(os.Args[2:])
+			return
+		case "report":
+			reportCmd(os.Args[2:])
 			return
 		}
 	}
@@ -165,6 +172,104 @@ func diffCmd(args []string) {
 
 	if *failOnRegression && d.Regressions > 0 {
 		os.Exit(1)
+	}
+}
+
+// reportCmd writes a self-contained, browsable HTML report (the whole spec
+// catalog with client-side search) — the artifact you publish per branch so
+// anyone can explore the specs without running a server.
+func reportCmd(args []string) {
+	fs := flag.NewFlagSet("specguard report", flag.ExitOnError)
+	var (
+		root       = fs.String("C", ".", "directory to run in (repo root)")
+		configPath = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		strict     = fs.Bool("strict", false, "treat warnings as errors")
+		out        = fs.String("o", "", "output file (default: stdout)")
+		format     = fs.String("format", "html", "output format: html | json")
+		webFile    = fs.String("web", "", "override the embedded UI template with this built single-file HTML")
+		branch     = fs.String("branch", "", "branch name to stamp (default: detected from git)")
+		commit     = fs.String("commit", "", "commit SHA to stamp (default: detected from git)")
+		repo       = fs.String("repo", "", "repository slug to stamp (e.g. owner/name)")
+	)
+	_ = fs.Parse(args)
+
+	cfg := loadConfig(*root, *configPath, *strict)
+	rep, err := lint.Run(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard report:", err)
+		os.Exit(2)
+	}
+
+	// Open the output sink up front, so we don't run a build only to fail on a
+	// bad path.
+	w := io.Writer(os.Stdout)
+	if *out != "" {
+		f, err := os.Create(*out)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "specguard report:", err)
+			os.Exit(2)
+		}
+		defer f.Close()
+		w = f
+	}
+
+	if *format == "json" {
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(rep); err != nil {
+			fmt.Fprintln(os.Stderr, "specguard report:", err)
+			os.Exit(2)
+		}
+		return
+	}
+
+	// Resolve the UI template: an explicit freshly-built file wins, else the
+	// version embedded in the binary.
+	tmpl, err := resolveTemplate(*webFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard report:", err)
+		os.Exit(2)
+	}
+
+	meta := buildMeta(*root, *branch, *commit, *repo)
+	if err := report.Render(w, tmpl, rep, meta); err != nil {
+		fmt.Fprintln(os.Stderr, "specguard report:", err)
+		os.Exit(2)
+	}
+}
+
+// resolveTemplate returns the single-file UI template: the file at webFile if
+// given, otherwise the embedded default.
+func resolveTemplate(webFile string) (string, error) {
+	if webFile != "" {
+		b, err := os.ReadFile(webFile)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	return report.Template()
+}
+
+// buildMeta fills provenance, preferring explicit flags and falling back to git.
+func buildMeta(root, branch, commit, repo string) report.Meta {
+	gitBranch, gitCommit := report.DetectGit(root)
+	if branch == "" {
+		branch = gitBranch
+	}
+	if commit == "" {
+		commit = gitCommit
+	}
+	short := commit
+	if len(short) > 7 {
+		short = short[:7]
+	}
+	return report.Meta{
+		Repo:        repo,
+		Branch:      branch,
+		Commit:      commit,
+		CommitShort: short,
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 }
 

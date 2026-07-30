@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Report, DiffResponse } from './types';
 import { fetchReport, fetchDiff } from './api';
+import { embeddedReport, embeddedMeta } from './embedded';
 import { Dashboard } from './components/Dashboard';
 import { SpecDetail } from './components/SpecDetail';
 
@@ -10,8 +11,14 @@ function specIdFromPath(path: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
+// A static export (from `specguard report`) bakes the report onto `window`. When
+// present we render it offline: no server, no fetch, no live diff/refresh.
+const EMBEDDED = embeddedReport();
+const META = embeddedMeta();
+const STATIC = EMBEDDED !== null;
+
 export function App() {
-  const [report, setReport] = useState<Report | null>(null);
+  const [report, setReport] = useState<Report | null>(EMBEDDED);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [changedMode, setChangedMode] = useState(false);
@@ -64,6 +71,7 @@ export function App() {
   }, [load, loadDiff, changedMode]);
 
   useEffect(() => {
+    if (STATIC) return; // embedded report: nothing to fetch
     const ctrl = new AbortController();
     load(ctrl.signal);
     return () => ctrl.abort();
@@ -110,16 +118,19 @@ export function App() {
   if (selectedId && selected) {
     return <SpecDetail spec={selected} report={report} onBack={back} />;
   }
+  // In a static export there is no server to refresh from and no live git to
+  // diff against, so both affordances are withheld (the props are omitted).
   return (
     <Dashboard
       report={report}
       onSelect={select}
-      onRefresh={refresh}
+      onRefresh={STATIC ? undefined : refresh}
       refreshing={refreshing}
       changedMode={changedMode}
-      onToggleChanged={toggleChanged}
+      onToggleChanged={STATIC ? undefined : toggleChanged}
       diff={diff}
       diffLoading={diffLoading}
+      meta={META}
     />
   );
 }
