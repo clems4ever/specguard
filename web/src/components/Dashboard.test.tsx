@@ -52,6 +52,27 @@ describe('Dashboard', () => {
     expect(within(draft).getByTestId('badge-draft')).toBeInTheDocument();
   });
 
+  it('offers a table-of-contents chip per area', () => {
+    renderDash();
+    const toc = screen.getByTestId('toc');
+    expect(within(toc).getByRole('link', { name: /auth/i })).toHaveAttribute('href', '#area-auth');
+  });
+
+  it('collapses an area, hiding its rows, and expands it again', async () => {
+    renderDash();
+    expect(screen.getByTestId('spec-row-auth-login')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('area-toggle-auth'));
+    expect(screen.queryByTestId('spec-row-auth-login')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('area-toggle-auth'));
+    expect(screen.getByTestId('spec-row-auth-login')).toBeInTheDocument();
+  });
+
+  it('explains the product with a dismissible intro', () => {
+    window.localStorage.clear();
+    renderDash();
+    expect(screen.getByTestId('intro')).toBeInTheDocument();
+  });
+
   it('filters specs by the search box', async () => {
     renderDash();
     await userEvent.type(screen.getByTestId('search'), 'login');

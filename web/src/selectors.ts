@@ -62,6 +62,36 @@ export const STATE_LABEL: Record<SpecState, string> = {
   'not-run': 'Not run',
 };
 
+// How alarming each state is, so a group of specs can be summarised by its
+// worst member (a single failing spec should colour the whole area red).
+const STATE_SEVERITY: Record<SpecState, number> = {
+  failing: 5,
+  uncovered: 5,
+  warning: 3,
+  'not-run': 2,
+  skipped: 2,
+  draft: 1,
+  passing: 0,
+  covered: 0,
+};
+
+/**
+ * A one-glance summary of an area: how many specs it holds, its worst state
+ * (for the roll-up badge) and whether every spec is in a good state — so the
+ * header can say "all passing" instead of making a reader scan the whole list.
+ */
+export function areaRollup(
+  specs: SpecStatus[],
+  hasResults = false,
+): { total: number; state: SpecState; allGood: boolean } {
+  let worst: SpecState = hasResults ? 'passing' : 'covered';
+  for (const s of specs) {
+    const st = specState(s, hasResults);
+    if (STATE_SEVERITY[st] > STATE_SEVERITY[worst]) worst = st;
+  }
+  return { total: specs.length, state: worst, allGood: STATE_SEVERITY[worst] === 0 };
+}
+
 /** The area a spec belongs to, taken from `specs/<area>/<file>.md`. */
 export function specArea(s: SpecStatus): string {
   const parts = s.path.split('/');

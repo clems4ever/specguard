@@ -6,6 +6,7 @@ import {
   filterSpecs,
   groupByArea,
   findingsForSpec,
+  areaRollup,
 } from './selectors';
 import { spec, mixedReport, resultsReport } from './test/fixtures';
 
@@ -98,6 +99,30 @@ describe('specState with results', () => {
 
   it('ignores results when none were ingested (coverage view)', () => {
     expect(specState(spec({ id: 'a', covered: true, result: 'failed' }), false)).toBe('covered');
+  });
+});
+
+describe('areaRollup', () => {
+  it('is all-good when every spec is covered', () => {
+    const r = areaRollup([spec({ id: 'a', covered: true }), spec({ id: 'b', covered: true })]);
+    expect(r.total).toBe(2);
+    expect(r.allGood).toBe(true);
+    expect(r.state).toBe('covered');
+  });
+
+  it('reports the worst state in the area', () => {
+    const r = areaRollup([spec({ id: 'a', covered: true }), spec({ id: 'b', covered: false })]);
+    expect(r.allGood).toBe(false);
+    expect(r.state).toBe('uncovered');
+  });
+
+  it('a single failing spec colours the whole area (with results)', () => {
+    const r = areaRollup(
+      [spec({ id: 'a', covered: true, result: 'passed' }), spec({ id: 'b', covered: true, result: 'failed' })],
+      true,
+    );
+    expect(r.state).toBe('failing');
+    expect(r.allGood).toBe(false);
   });
 });
 

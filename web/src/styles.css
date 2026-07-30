@@ -194,16 +194,121 @@ code {
   border-color: var(--accent);
 }
 
+/* ---- orientation intro ---- */
+.intro {
+  position: relative;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.intro-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.intro-body {
+  margin: 0 0 12px;
+  color: var(--muted);
+  max-width: 68ch;
+}
+.intro-body strong {
+  color: var(--text);
+}
+.intro-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.intro-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.intro-dismiss:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+/* ---- table of contents ---- */
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.toc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.toc-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.toc-count {
+  color: var(--text);
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
 /* ---- areas + rows ---- */
 .area {
   margin-bottom: 22px;
+  scroll-margin-top: 12px;
+}
+.area-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.area-header:hover .area-title {
+  color: var(--text);
+}
+.area-chevron {
+  font-size: 10px;
+  width: 12px;
+  color: var(--muted);
 }
 .area-title {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--muted);
-  margin: 0 0 8px 2px;
+  margin: 0;
+}
+.area-count {
+  font-size: 12px;
+}
+.area-header .badge {
+  margin-left: auto;
 }
 .spec-list {
   display: flex;

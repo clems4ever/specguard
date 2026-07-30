@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { Report, ReportMeta, SpecStatus, DiffResponse } from '../types';
-import { filterSpecs, groupByArea, specState, summarize } from '../selectors';
+import { areaRollup, filterSpecs, groupByArea, specState, summarize } from '../selectors';
 import { StatusBadge } from './StatusBadge';
 import { FindingsPanel } from './FindingsPanel';
 import { ChangesView } from './ChangesView';
+import { Intro } from './Intro';
 import { Stamp } from './Stamp';
 
 function SpecRow({
@@ -31,6 +32,49 @@ function SpecRow({
         {tests.length ? `${tests.length} test${tests.length > 1 ? 's' : ''}` : '—'}
       </span>
     </button>
+  );
+}
+
+// One area, collapsible, with a roll-up so a reader can judge it without
+// expanding: the spec count and its worst state ("all passing" vs "1 failing").
+function AreaSection({
+  area,
+  specs,
+  onSelect,
+  hasResults,
+}: {
+  area: string;
+  specs: SpecStatus[];
+  onSelect: (id: string) => void;
+  hasResults: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+  const roll = areaRollup(specs, hasResults);
+  return (
+    <section id={`area-${area}`} className="area" data-testid={`area-${area}`}>
+      <button
+        className="area-header"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        data-testid={`area-toggle-${area}`}
+      >
+        <span className="area-chevron" aria-hidden>
+          {open ? '▾' : '▸'}
+        </span>
+        <h2 className="area-title">{area}</h2>
+        <span className="area-count muted">
+          {roll.total} spec{roll.total === 1 ? '' : 's'}
+        </span>
+        <StatusBadge state={roll.state} />
+      </button>
+      {open && (
+        <div className="spec-list">
+          {specs.map((s) => (
+            <SpecRow key={s.id} spec={s} onSelect={onSelect} hasResults={hasResults} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -143,6 +187,8 @@ export function Dashboard({
         <ChangesView diff={diff} loading={diffLoading} onSelect={onSelect} />
       ) : (
         <>
+          <Intro hasResults={summary.hasResults} />
+
           <input
             className="search"
             data-testid="search"
@@ -156,16 +202,28 @@ export function Dashboard({
               No specs match “{query}”.
             </p>
           ) : (
-            groups.map((g) => (
-              <section key={g.area} className="area" data-testid={`area-${g.area}`}>
-                <h2 className="area-title">{g.area}</h2>
-                <div className="spec-list">
-                  {g.specs.map((s) => (
-                    <SpecRow key={s.id} spec={s} onSelect={onSelect} hasResults={summary.hasResults} />
+            <>
+              {groups.length > 1 && (
+                <nav className="toc" data-testid="toc" aria-label="Areas">
+                  {groups.map((g) => (
+                    <a key={g.area} className="toc-chip" href={`#area-${g.area}`}>
+                      {g.area}
+                      <span className="toc-count">{g.specs.length}</span>
+                    </a>
                   ))}
-                </div>
-              </section>
-            ))
+                </nav>
+              )}
+
+              {groups.map((g) => (
+                <AreaSection
+                  key={g.area}
+                  area={g.area}
+                  specs={g.specs}
+                  onSelect={onSelect}
+                  hasResults={summary.hasResults}
+                />
+              ))}
+            </>
           )}
 
           <section className="findings-section">
