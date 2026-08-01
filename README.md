@@ -2,6 +2,8 @@
 
 A tiny, dependency-free traceability linter for **specification-by-example**.
 
+📊 **[Explore the live spec report →](https://clems4ever.github.io/specguard/)** — specguard's own specs, published from `main` to GitHub Pages.
+
 You keep a directory of short spec files — one stable idea each, written for
 humans and agents. Your tests link back to a spec by id. `specguard` enforces
 the link both ways:
@@ -108,7 +110,8 @@ specguard report -results playwright.json -assets public/assets -o public/index.
 
 `.github/workflows/pages.yml` publishes this for `main` to GitHub Pages on every
 push, so anyone can explore the specs at a stable URL without checking out the
-repo. (Enable it via **Settings → Pages → Source = "GitHub Actions"**.)
+repo — for this repo, <https://clems4ever.github.io/specguard/>. (Enable it via
+**Settings → Pages → Source = "GitHub Actions"**.)
 
 ## Dogfooding
 
