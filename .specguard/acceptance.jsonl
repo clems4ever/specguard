@@ -36,3 +36,38 @@
 {"spec":"spec-frontmatter","fingerprint":"75762b9e81838f89","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:09:11Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}
 {"spec":"spec-frontmatter-invalid","fingerprint":"bb79e28dca708c9f","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:09:11Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}
 {"spec":"ui-area-overview","fingerprint":"b7eb405a0a81fac8","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:09:11Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}
+{"spec":"diff-impl-changed","fingerprint":"76d89b6f38017ea4","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"diff-regression","fingerprint":"1ad1c1bd1a20c6fc","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-covered-passes","fingerprint":"db3b1bcca229d0fe","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-covers-unmatched","fingerprint":"50cc5349c89e6892","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-draft-uncovered-warns","fingerprint":"9dab8c564ac2d1c5","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-duplicate-id","fingerprint":"5fe7b5a4262817e2","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-ref-locations","fingerprint":"9ce8ce3c78f617ad","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-spec-body-not-coverage","fingerprint":"f323ab02639f4792","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-strict-promotes","fingerprint":"106f80ea9872620c","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-uncovered-is-error","fingerprint":"70a7eb7cb45a0cad","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"lint-undefined-reference","fingerprint":"8701703cca287fd0","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"report-artifacts-copied","fingerprint":"6b41aac7f76cdb27","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"report-branch-slug","fingerprint":"163a80e1540b4817","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"report-embeds-data","fingerprint":"6a8da49043d5df3e","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"report-escapes-breakout","fingerprint":"7989527a81c1ba88","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"results-format-autodetect","fingerprint":"4b0793cd7f040d06","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"results-go-func","fingerprint":"116064d2f115c7a8","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"results-playwright-tag","fingerprint":"3ae49730c8c8c804","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"results-screenshots","fingerprint":"044e5959a52f7f80","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"results-worst-wins","fingerprint":"fc96aa9462543f4c","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"server-badge","fingerprint":"30719e9ecc03d3d5","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"server-live-report","fingerprint":"cb3bbec6ec45a8b4","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"server-spa-fallback","fingerprint":"8c6387698d252dd3","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"spec-acceptance","fingerprint":"2e483f028bdaffe8","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"spec-frontmatter","fingerprint":"fe05291266df6bc0","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"spec-frontmatter-invalid","fingerprint":"897e6e110bd8a149","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"spec-hierarchy","fingerprint":"075e2550df017e29","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-area-overview","fingerprint":"9f2c5359a9200b12","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-code-links","fingerprint":"bb719f606f56afeb","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-dashboard","fingerprint":"d954d9a935a37d2a","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-live-preview","fingerprint":"f9ebbfb039d64881","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-orientation","fingerprint":"cfa5bdfe60c19c52","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-search","fingerprint":"d272913dfefd5440","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-spec-detail","fingerprint":"f97c0253128910c9","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-subpath-assets","fingerprint":"52a4963cd22ae57a","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
