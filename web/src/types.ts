@@ -41,6 +41,11 @@ export interface SpecStatus {
   hasChild?: boolean; // some spec declares this one as its parent
   result?: TestStatus; // aggregate outcome of covering tests
   artifacts?: Artifact[] | null; // screenshots captured by covering tests
+  // PM behavioural-acceptance state.
+  fingerprint?: string; // hash of the spec's expectation (intent + covering tests)
+  lifecycle?: 'proposed' | 'implemented' | 'accepted' | 'stale';
+  acceptedBy?: string;
+  acceptedAt?: string;
 }
 
 // AreaInfo is an optional human overview of a spec area, sourced from a

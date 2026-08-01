@@ -72,10 +72,60 @@ specguard -strict    # treat warnings (e.g. covers-unmatched) as errors
 specguard serve      # live spec-overview UI at http://localhost:8137
 specguard diff       # show only the specs a change touched (vs a base ref)
 specguard report     # write a self-contained, searchable HTML report
+specguard accept     # record a PM's behavioural sign-off, or gate on it
 ```
 
 Exit code is `0` when the check passes and `1` when it fails, so it drops
 straight into CI.
+
+## Behavioural acceptance — review once, guard forever
+
+Traceability proves a behaviour is *tested*. It doesn't prove a human ever
+confirmed the behaviour is *right*. `specguard accept` adds that gate — a PM
+reviews a behaviour once (in a demo), and it's guarded automatically thereafter.
+
+Each spec has a **fingerprint** = a hash of its *expectation*: the spec's intent
+plus the **source of its covering tests** (deliberately *not* pass/fail or
+screenshots — those are guarded continuously by CI). A PM's acceptance is
+recorded against that fingerprint in an append-only ledger,
+`.specguard/acceptance.jsonl`.
+
+```
+specguard accept --check                 # CI gate: fail if any behaviour awaits review
+specguard accept --by you <spec-id>      # record a sign-off for one spec
+specguard accept --all --by you          # sign off everything awaiting review
+```
+
+A spec is then in one lifecycle state:
+
+| state | meaning |
+|---|---|
+| `proposed` | wanted by a PM, not built yet (no covering test) |
+| `implemented` | built and tested, but never accepted |
+| `accepted` | PM-accepted at the current fingerprint |
+| `stale` | accepted before, but the intent or a covering test has since changed |
+
+Because the fingerprint is the *expectation*, a pure code refactor (covering
+tests unchanged) never disturbs an acceptance — the PM is not re-summoned.
+Editing a spec's intent or a covering test flips **only that spec** to `stale`,
+routing exactly it back for re-review. And an agent can't silence a regression by
+weakening a test: changing the test changes the fingerprint, which re-opens
+review.
+
+### GitHub integration
+
+`.github/workflows/acceptance.yml` wires this into pull requests:
+
+1. On every PR, a required **`acceptance / gate`** check runs `specguard accept
+   --check` — **red** while any behaviour awaits review (and it comments which
+   specs need looking at).
+2. When a PM **approves** the PR, the workflow runs `specguard accept --all`,
+   commits the updated ledger to the branch, and the gate turns **green**.
+
+So nothing reaches `main` that realises product behaviour a PM hasn't seen and
+signed off. Restrict who may accept with a `PM_REVIEWERS` repo variable
+(comma-separated logins); use a `SPECGUARD_PAT` secret for the ledger push so the
+gate re-runs on the new commit.
 
 ### `specguard report` — a browsable catalog you can publish
 

@@ -127,6 +127,14 @@ type SpecStatus struct {
 	// A spec with children is verified by them, so it needs no direct test.
 	Parent   string `json:"parent,omitempty"`
 	HasChild bool   `json:"hasChild,omitempty"`
+	// Fingerprint hashes the spec's expectation (intent + covering test source);
+	// a PM's acceptance is recorded against it. Lifecycle is the review state
+	// (proposed / implemented / accepted / stale). AcceptedBy/At record the
+	// current sign-off when Lifecycle is accepted.
+	Fingerprint string `json:"fingerprint,omitempty"`
+	Lifecycle   string `json:"lifecycle,omitempty"`
+	AcceptedBy  string `json:"acceptedBy,omitempty"`
+	AcceptedAt  string `json:"acceptedAt,omitempty"`
 	// Result is the aggregate outcome of this spec's covering tests, set when
 	// results are ingested (failed if any covering test failed).
 	Result TestStatus `json:"result,omitempty"`
@@ -190,7 +198,8 @@ func Run(cfg Config) (*Report, error) {
 
 	// 2. Walk the tree once: scan test files for references, and collect all
 	// file paths so `covers` entries can be validated.
-	refs := map[string][]Ref{} // spec id -> (file, line) references
+	refs := map[string][]Ref{}         // spec id -> (file, line) references
+	testContent := map[string]string{} // test file -> source, for fingerprinting
 	var allFiles []string
 	specsPrefix := filepath.ToSlash(filepath.Clean(cfg.SpecsDir)) + "/"
 	walkRoot := cfg.Root
@@ -227,6 +236,7 @@ func Run(cfg Config) (*Report, error) {
 		}
 		// Scan line by line so each reference carries its 1-based line number.
 		lines := strings.Split(string(data), "\n")
+		testContent[rel] = string(data)
 		isGo := strings.HasSuffix(rel, "_test.go")
 		for i, line := range lines {
 			for _, m := range refPattern.FindAllStringSubmatch(line, -1) {
@@ -260,17 +270,36 @@ func Run(cfg Config) (*Report, error) {
 	}
 	rep.Findings = append(rep.Findings, validateParents(specs, byID)...)
 
+	// Acceptance ledger: the PM's recorded behavioural sign-offs, used to resolve
+	// each spec's review lifecycle against its current fingerprint.
+	ledger, lerr := LoadLedger(cfg.Root)
+	if lerr != nil {
+		rep.Findings = append(rep.Findings, Finding{
+			Severity: Warning, Rule: "ledger", File: LedgerPath, Message: lerr.Error(),
+		})
+	}
+	acceptedFPs := acceptedFingerprints(ledger)
+	latestAcc := latestAcceptance(ledger)
+
 	// 3. Resolve each spec's status.
 	for _, s := range specs {
 		draft := s.Status == spec.StatusDraft
 		specRefs := sortedRefs(refs[s.ID])
+		coveringFiles := distinctFiles(specRefs)
 		st := SpecStatus{
 			// s.Path is already relative to cfg.Root (set in loadSpecs).
 			ID: s.ID, Title: s.Title, Status: s.Status, Path: s.Path,
 			Body: s.Body, Covers: s.Covers, Parent: s.Parent,
-			Tests: distinctFiles(specRefs), Refs: specRefs,
+			Tests: coveringFiles, Refs: specRefs,
 			Covered: len(specRefs) > 0, CoversOK: true, Draft: draft,
 			HasChild: hasChild[s.ID],
+		}
+		st.Fingerprint = fingerprint(s.ID, s.Title, s.Body, coveringFiles, testContent)
+		st.Lifecycle = lifecycleOf(st.Covered, st.Fingerprint, acceptedFPs[s.ID])
+		if st.Lifecycle == LifeAccepted {
+			if a, ok := latestAcc[s.ID+"@"+st.Fingerprint]; ok {
+				st.AcceptedBy, st.AcceptedAt = a.By, a.At
+			}
 		}
 		// A parent spec is verified by its children (a leaf must be covered by a
 		// test; a parent's coverage is derived), so it never fails for lacking a

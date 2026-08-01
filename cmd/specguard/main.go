@@ -9,6 +9,7 @@
 //	specguard serve [flags]   serve the report over HTTP for the web UI
 //	specguard diff [flags]    show only the specs a change touched (vs a base ref)
 //	specguard report [flags]  write a self-contained, browsable HTML report
+//	specguard accept [flags]  record a PM's behavioural sign-off, or gate on it
 package main
 
 import (
@@ -40,9 +41,116 @@ func main() {
 		case "report":
 			reportCmd(os.Args[2:])
 			return
+		case "accept":
+			acceptCmd(os.Args[2:])
+			return
 		}
 	}
 	lintCmd(os.Args[1:])
+}
+
+// needsReview is true for a spec that carries a direct test (a behaviour a PM
+// should sign off) but is not accepted at its current fingerprint. Test-less
+// parent specs are verified through their children and are not gated directly.
+func needsReview(s lint.SpecStatus) bool {
+	return s.Covered && (s.Lifecycle == lint.LifeImplemented || s.Lifecycle == lint.LifeStale)
+}
+
+// acceptCmd records a PM's behavioural acceptance, or gates a build on it.
+//
+//	specguard accept <id> [--by ..] [--evidence URL]   accept one spec at its current fingerprint
+//	specguard accept --all [--by ..]                    accept every spec awaiting review
+//	specguard accept --check                            exit non-zero if any spec awaits review
+func acceptCmd(args []string) {
+	fs := flag.NewFlagSet("specguard accept", flag.ExitOnError)
+	var (
+		root       = fs.String("C", ".", "directory to run in (repo root)")
+		configPath = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		all        = fs.Bool("all", false, "accept every spec currently awaiting review")
+		check      = fs.Bool("check", false, "exit non-zero if any spec awaits PM review (a CI gate)")
+		by         = fs.String("by", "", "who is accepting (reviewer identity)")
+		evidence   = fs.String("evidence", "", "link to the demo / preview the behaviour was reviewed in")
+	)
+	_ = fs.Parse(args)
+
+	cfg := loadConfig(*root, *configPath, false)
+	rep, err := lint.Run(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "specguard accept:", err)
+		os.Exit(2)
+	}
+
+	var pending []lint.SpecStatus
+	for _, s := range rep.Specs {
+		if needsReview(s) {
+			pending = append(pending, s)
+		}
+	}
+
+	// Gate mode: fail the build while any behaviour lacks a current sign-off.
+	if *check {
+		if len(pending) == 0 {
+			fmt.Printf("specguard: all implemented specs are accepted at their current fingerprint.\n")
+			return
+		}
+		fmt.Printf("specguard: %d spec(s) await PM behavioural review:\n", len(pending))
+		for _, s := range pending {
+			note := "needs review"
+			if s.Lifecycle == lint.LifeStale {
+				note = "behaviour changed since acceptance — re-review"
+			}
+			fmt.Printf("  • %-28s %s (%s)\n", s.ID, s.Title, note)
+		}
+		fmt.Printf("\nA reviewer records acceptance with: specguard accept <id> --by <you>\n")
+		os.Exit(1)
+	}
+
+	at := time.Now().UTC().Format(time.RFC3339)
+	record := func(s lint.SpecStatus) {
+		if err := lint.AppendAcceptance(*root, lint.Acceptance{
+			Spec: s.ID, Fingerprint: s.Fingerprint, Verdict: "accepted",
+			By: *by, At: at, Evidence: *evidence,
+		}); err != nil {
+			fmt.Fprintln(os.Stderr, "specguard accept:", err)
+			os.Exit(2)
+		}
+		fmt.Printf("accepted %s @ %s\n", s.ID, s.Fingerprint)
+	}
+
+	if *all {
+		if len(pending) == 0 {
+			fmt.Println("specguard: nothing to accept — all implemented specs already accepted.")
+			return
+		}
+		for _, s := range pending {
+			record(s)
+		}
+		return
+	}
+
+	id := fs.Arg(0)
+	if id == "" {
+		fmt.Fprintln(os.Stderr, "specguard accept: give a spec id, or --all, or --check")
+		os.Exit(2)
+	}
+	// Go's flag parser stops at the first positional, so trailing flags would be
+	// silently dropped — guard against `accept <id> --by X` (flags must lead).
+	if fs.NArg() > 1 {
+		fmt.Fprintln(os.Stderr, "specguard accept: put flags before the spec id, e.g. accept --by you <id>")
+		os.Exit(2)
+	}
+	for _, s := range rep.Specs {
+		if s.ID == id {
+			if s.Lifecycle == lint.LifeAccepted {
+				fmt.Printf("specguard: %s already accepted at %s\n", id, s.Fingerprint)
+				return
+			}
+			record(s)
+			return
+		}
+	}
+	fmt.Fprintf(os.Stderr, "specguard accept: no such spec: %s\n", id)
+	os.Exit(2)
 }
 
 // loadConfig resolves the config file and builds the lint config.
