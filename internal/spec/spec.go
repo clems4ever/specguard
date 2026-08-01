@@ -26,6 +26,10 @@ type Spec struct {
 	// parent links form a tree from broad capabilities down to leaf behaviours
 	// that tests verify directly.
 	Parent string `json:"parent,omitempty"`
+	// Preview is an optional path where this behaviour can be exercised in a
+	// running app (e.g. "/login"). The report joins it to a preview base URL so
+	// a PM can click straight from the spec to the live feature to review it.
+	Preview string `json:"preview,omitempty"`
 	// Body is the markdown that follows the frontmatter, verbatim. specguard
 	// never interprets it; it is carried so a UI can render the prose.
 	Body string `json:"body,omitempty"`
@@ -78,6 +82,9 @@ func Parse(data []byte) (*Spec, error) {
 	}
 	if v := fields["parent"]; len(v) > 0 {
 		s.Parent = v[0]
+	}
+	if v := fields["preview"]; len(v) > 0 {
+		s.Preview = v[0]
 	}
 	if s.Parent != "" && !idPattern.MatchString(s.Parent) {
 		return nil, fmt.Errorf("parent %q must match %s", s.Parent, idPattern)

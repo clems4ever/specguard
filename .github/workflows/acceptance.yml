@@ -92,10 +92,14 @@ jobs:
         if: steps.pm.outputs.ok == 'true'
         env:
           REVIEWER: ${{ github.event.review.user.login }}
-          EVIDENCE: ${{ github.event.pull_request.html_url }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
+          # Evidence = the per-PR preview surface the PM reviewed (see preview.yml).
+          owner="$(echo "${GITHUB_REPOSITORY%/*}" | tr 'A-Z' 'a-z')"
+          repo="${GITHUB_REPOSITORY#*/}"
+          evidence="https://${owner}.github.io/${repo}/pr-${PR}/"
           go build -o specguard ./cmd/specguard
-          ./specguard accept --all --by "$REVIEWER" --evidence "$EVIDENCE"
+          ./specguard accept --all --by "$REVIEWER" --evidence "$evidence"
           if git diff --quiet -- .specguard/acceptance.jsonl; then
             echo "No new behaviours to accept."
             exit 0

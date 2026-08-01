@@ -1,6 +1,7 @@
 ---
 id: ui-subpath-assets
 title: Screenshots load when the report is hosted under a subpath
+preview: /spec/ui-subpath-assets
 parent: ui-report
 covers:
   - web/src/base.ts

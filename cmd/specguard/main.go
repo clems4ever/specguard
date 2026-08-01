@@ -291,18 +291,19 @@ func diffCmd(args []string) {
 func reportCmd(args []string) {
 	fs := flag.NewFlagSet("specguard report", flag.ExitOnError)
 	var (
-		root       = fs.String("C", ".", "directory to run in (repo root)")
-		configPath = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
-		strict     = fs.Bool("strict", false, "treat warnings as errors")
-		out        = fs.String("o", "", "output file (default: stdout)")
-		format     = fs.String("format", "html", "output format: html | json")
-		webFile    = fs.String("web", "", "override the embedded UI template with this built single-file HTML")
-		branch     = fs.String("branch", "", "branch name to stamp (default: detected from git)")
-		commit     = fs.String("commit", "", "commit SHA to stamp (default: detected from git)")
-		repo       = fs.String("repo", "", "repository slug to stamp (e.g. owner/name)")
-		resultsArg = fs.String("results", "", "comma-separated test result files (Playwright JSON / `go test -json`) to show pass/fail")
-		assetsDir  = fs.String("assets", "", "directory to copy test screenshots into (enables per-spec galleries; makes the report a bundle, not one file)")
-		assetsBase = fs.String("assets-base", "assets", "URL prefix the report loads copied screenshots from")
+		root        = fs.String("C", ".", "directory to run in (repo root)")
+		configPath  = fs.String("config", "", "config file (default: <root>/.specguard.yml)")
+		strict      = fs.Bool("strict", false, "treat warnings as errors")
+		out         = fs.String("o", "", "output file (default: stdout)")
+		format      = fs.String("format", "html", "output format: html | json")
+		webFile     = fs.String("web", "", "override the embedded UI template with this built single-file HTML")
+		branch      = fs.String("branch", "", "branch name to stamp (default: detected from git)")
+		commit      = fs.String("commit", "", "commit SHA to stamp (default: detected from git)")
+		repo        = fs.String("repo", "", "repository slug to stamp (e.g. owner/name)")
+		previewBase = fs.String("preview-base", "", "root URL of a running preview (per-PR deploy); each spec's `preview` path links here")
+		resultsArg  = fs.String("results", "", "comma-separated test result files (Playwright JSON / `go test -json`) to show pass/fail")
+		assetsDir   = fs.String("assets", "", "directory to copy test screenshots into (enables per-spec galleries; makes the report a bundle, not one file)")
+		assetsBase  = fs.String("assets-base", "assets", "URL prefix the report loads copied screenshots from")
 	)
 	_ = fs.Parse(args)
 
@@ -362,6 +363,7 @@ func reportCmd(args []string) {
 	}
 
 	meta := buildMeta(*root, *branch, *commit, *repo)
+	meta.PreviewBase = *previewBase
 	if err := report.Render(w, tmpl, rep, meta); err != nil {
 		fmt.Fprintln(os.Stderr, "specguard report:", err)
 		os.Exit(2)

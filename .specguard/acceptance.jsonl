@@ -32,3 +32,7 @@
 {"spec":"ui-search","fingerprint":"e8c65cc433e21a2c","verdict":"accepted","by":"clems4ever","at":"2026-08-01T14:42:04Z","evidence":"baseline: existing behaviour accepted at adoption"}
 {"spec":"ui-spec-detail","fingerprint":"fe99b001d52eadfd","verdict":"accepted","by":"clems4ever","at":"2026-08-01T14:42:04Z","evidence":"baseline: existing behaviour accepted at adoption"}
 {"spec":"ui-subpath-assets","fingerprint":"ec22d48047f3cba7","verdict":"accepted","by":"clems4ever","at":"2026-08-01T14:42:04Z","evidence":"baseline: existing behaviour accepted at adoption"}
+{"spec":"ui-live-preview","fingerprint":"6e2f72e82b824cdb","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:08:38Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}
+{"spec":"spec-frontmatter","fingerprint":"75762b9e81838f89","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:09:11Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}
+{"spec":"spec-frontmatter-invalid","fingerprint":"bb79e28dca708c9f","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:09:11Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}
+{"spec":"ui-area-overview","fingerprint":"b7eb405a0a81fac8","verdict":"accepted","by":"clems4ever","at":"2026-08-01T16:09:11Z","evidence":"https://clems4ever.github.io/specguard/pr-14/"}

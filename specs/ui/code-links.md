@@ -1,6 +1,7 @@
 ---
 id: ui-code-links
 title: Specs and tests deep-link to the code
+preview: /spec/ui-code-links
 parent: ui-report
 covers:
   - web/src

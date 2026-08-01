@@ -127,6 +127,9 @@ type SpecStatus struct {
 	// A spec with children is verified by them, so it needs no direct test.
 	Parent   string `json:"parent,omitempty"`
 	HasChild bool   `json:"hasChild,omitempty"`
+	// Preview is an optional path where the behaviour can be exercised in a
+	// running app; the report joins it to the report's preview base URL.
+	Preview string `json:"preview,omitempty"`
 	// Fingerprint hashes the spec's expectation (intent + covering test source);
 	// a PM's acceptance is recorded against it. Lifecycle is the review state
 	// (proposed / implemented / accepted / stale). AcceptedBy/At record the
@@ -289,7 +292,7 @@ func Run(cfg Config) (*Report, error) {
 		st := SpecStatus{
 			// s.Path is already relative to cfg.Root (set in loadSpecs).
 			ID: s.ID, Title: s.Title, Status: s.Status, Path: s.Path,
-			Body: s.Body, Covers: s.Covers, Parent: s.Parent,
+			Body: s.Body, Covers: s.Covers, Parent: s.Parent, Preview: s.Preview,
 			Tests: coveringFiles, Refs: specRefs,
 			Covered: len(specRefs) > 0, CoversOK: true, Draft: draft,
 			HasChild: hasChild[s.ID],

@@ -60,6 +60,19 @@ describe('SpecDetail', () => {
     expect(onSelect).toHaveBeenCalledWith('cap');
   });
 
+  it('shows a "Try it live" link when a preview base and spec.preview are set', () => {
+    const s = spec({ id: 'ui-dashboard', title: 'Dashboard', path: 'specs/ui/dashboard.md', preview: '/spec/x' });
+    const rep = { ok: true, testFiles: 1, findings: [], specs: [] };
+    const { unmount } = render(
+      <SpecDetail spec={s} report={rep} onBack={() => {}} meta={{ previewBase: 'https://pr-9.example' }} />,
+    );
+    expect(screen.getByTestId('try-live')).toHaveAttribute('href', 'https://pr-9.example/spec/x');
+    unmount();
+    // No preview base → no live link.
+    render(<SpecDetail spec={s} report={rep} onBack={() => {}} meta={{}} />);
+    expect(screen.queryByTestId('try-live')).not.toBeInTheDocument();
+  });
+
   it('shows PM acceptance state (accepted / awaiting / stale)', () => {
     const mk = (lifecycle: 'accepted' | 'implemented' | 'stale') =>
       spec({

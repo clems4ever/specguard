@@ -1,6 +1,7 @@
 ---
 id: ui-search
 title: The catalog is searchable
+preview: /
 parent: ui-report
 covers:
   - web/src

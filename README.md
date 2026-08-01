@@ -112,6 +112,21 @@ routing exactly it back for re-review. And an agent can't silence a regression b
 weakening a test: changing the test changes the fingerprint, which re-opens
 review.
 
+### The demo surface — per-PR preview
+
+A PM reviews behaviour by *using* it. A spec can declare a `preview` path where
+its behaviour runs; generate the report with a preview base and each such spec
+shows a **"Try it live"** deep link to the running feature:
+
+```
+specguard report --preview-base https://pr-42.preview.example -o public/index.html
+```
+
+`.github/workflows/preview.yml` builds this per PR — the report with each spec's
+real pass/fail, the screenshots its tests captured, and a live link — publishes
+it to a per-PR URL, and comments it. The PM reviews there and approves; the
+acceptance is recorded with that preview URL as its evidence.
+
 ### GitHub integration
 
 `.github/workflows/acceptance.yml` wires this into pull requests:

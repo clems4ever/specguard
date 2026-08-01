@@ -39,6 +39,7 @@ export interface SpecStatus {
   draft: boolean;
   parent?: string; // id of the spec this one refines, if any
   hasChild?: boolean; // some spec declares this one as its parent
+  preview?: string; // path to exercise this behaviour in a running preview
   result?: TestStatus; // aggregate outcome of covering tests
   artifacts?: Artifact[] | null; // screenshots captured by covering tests
   // PM behavioural-acceptance state.
@@ -75,6 +76,7 @@ export interface ReportMeta {
   commit?: string;
   commitShort?: string;
   generatedAt?: string; // RFC3339
+  previewBase?: string; // root URL of a running preview; joined to spec.preview
 }
 
 // Mirrors internal/diff (the "what changed" delta vs a base git ref).

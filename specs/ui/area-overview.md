@@ -1,6 +1,7 @@
 ---
 id: ui-area-overview
 title: Each area can describe itself
+preview: /
 parent: ui-report
 covers:
   - internal/spec/spec.go
