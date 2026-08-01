@@ -1,6 +1,7 @@
 ---
 id: ui-report
 title: The report is an explorable interface
+preview: /
 covers:
   - web/src
 ---

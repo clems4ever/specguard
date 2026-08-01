@@ -1,0 +1,107 @@
+# Per-PR preview: the demo surface a PM reviews.
+#
+# On every PR this builds specguard's own spec report for the PR's code — each
+# spec with its intent, its REAL pass/fail, the screenshots its acceptance tests
+# captured (the "recording"), and a "Try it live" deep link into the running
+# preview — and publishes it at a per-PR URL, then comments the link. The PM
+# reviews behaviour there (not code) and approves; acceptance.yml records the
+# sign-off with this URL as the evidence.
+#
+# Browsable hosting uses a `gh-pages` branch under /pr-<n>/ (set Pages → Source
+# to the gh-pages branch to serve it). The report is also uploaded as an artifact
+# so the surface exists even before Pages is configured.
+name: preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Preview URL for this PR
+        id: url
+        run: |
+          owner="$(echo "${GITHUB_REPOSITORY%/*}" | tr 'A-Z' 'a-z')"
+          repo="${GITHUB_REPOSITORY#*/}"
+          echo "base=https://${owner}.github.io/${repo}/pr-${{ github.event.pull_request.number }}/" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        working-directory: web
+        run: |
+          npm ci
+          npm run build:single
+      - run: go build -o specguard ./cmd/specguard
+
+      - name: Run the tests (real pass/fail + screenshots)
+        run: |
+          go test -json ./... > "$RUNNER_TEMP/go.json" || true
+          cd web
+          npx playwright install --with-deps chromium
+          CI=1 npx playwright test --reporter=json > "$RUNNER_TEMP/e2e.json" || true
+
+      - name: Generate the PR report (with a live preview base)
+        run: |
+          mkdir -p public
+          ./specguard report -C . \
+            -web web/dist-single/index.html \
+            -branch "${{ github.head_ref }}" \
+            -commit "${{ github.event.pull_request.head.sha }}" \
+            -repo "${{ github.repository }}" \
+            -preview-base "${{ steps.url.outputs.base }}" \
+            -results "$RUNNER_TEMP/go.json,$RUNNER_TEMP/e2e.json" \
+            -assets public/assets -assets-base assets \
+            -o public/index.html
+          cp public/index.html public/404.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-report
+          path: public
+
+      - name: Publish to gh-pages/pr-<n>/
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          destination_dir: pr-${{ github.event.pull_request.number }}
+          keep_files: true
+
+      - name: Comment the preview link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL: ${{ steps.url.outputs.base }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "### 👀 Preview for this PR"
+            echo
+            echo "Review the behaviour here (expected vs. actual, screenshots, and a **Try it live** link per spec):"
+            echo
+            echo "**$URL**"
+            echo
+            echo "_Approve the PR once it matches expectations and specguard records your sign-off._"
+          } > body.md
+          gh pr comment "$PR" --body-file body.md --repo "$GITHUB_REPOSITORY" --edit-last || \
+            gh pr comment "$PR" --body-file body.md --repo "$GITHUB_REPOSITORY"

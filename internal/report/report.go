@@ -36,6 +36,10 @@ type Meta struct {
 	Commit      string `json:"commit,omitempty"`
 	CommitShort string `json:"commitShort,omitempty"`
 	GeneratedAt string `json:"generatedAt,omitempty"` // RFC3339
+	// PreviewBase is the root URL of a running preview of this build (e.g. a
+	// per-PR deploy). The report joins it to each spec's `preview` path so a PM
+	// can open the live feature to review it.
+	PreviewBase string `json:"previewBase,omitempty"`
 }
 
 // Template returns the embedded single-file UI template. It errors if the embed

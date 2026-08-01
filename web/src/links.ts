@@ -15,3 +15,11 @@ export function codeLink(meta: ReportMeta | null | undefined, path: string, line
 export function refLabel(path: string, line?: number): string {
   return line && line > 0 ? `${path}:${line}` : path;
 }
+
+// previewUrl joins a report's preview base (a running per-PR deploy) to a spec's
+// `preview` path, so a PM can open the live feature to review it. Returns null
+// unless both are present (no preview base → no live link).
+export function previewUrl(base: string | undefined, preview: string | undefined): string | null {
+  if (!base || !preview) return null;
+  return base.replace(/\/+$/, '') + '/' + preview.replace(/^\/+/, '');
+}

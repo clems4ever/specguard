@@ -1,6 +1,7 @@
 ---
 id: ui-dashboard
 title: The report renders a dashboard
+preview: /
 parent: ui-report
 covers:
   - web/src

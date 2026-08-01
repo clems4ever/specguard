@@ -1,7 +1,7 @@
 import type { Ref, Report, ReportMeta, SpecStatus, TestStatus } from '../types';
 import { specArea, specState, findingsForSpec, buildTree, subtreeRollup } from '../selectors';
 import type { SpecNode } from '../selectors';
-import { codeLink, refLabel } from '../links';
+import { codeLink, refLabel, previewUrl } from '../links';
 import { StatusBadge } from './StatusBadge';
 import { Markdown } from './Markdown';
 import { FindingsPanel } from './FindingsPanel';
@@ -115,6 +115,19 @@ export function SpecDetail({
       <div className="detail-path" data-testid="detail-path">
         <CodeRef meta={meta} path={spec.path} testid="spec-source-link" />
       </div>
+
+      {previewUrl(meta?.previewBase, spec.preview) && (
+        <a
+          className="try-live"
+          data-testid="try-live"
+          href={previewUrl(meta?.previewBase, spec.preview)!}
+          target="_blank"
+          rel="noreferrer"
+        >
+          ▶ Try it live
+          <span className="try-live-mark" aria-hidden> ↗</span>
+        </a>
+      )}
 
       <Acceptance spec={spec} />
 

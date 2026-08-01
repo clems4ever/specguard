@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { codeLink, refLabel } from './links';
+import { codeLink, refLabel, previewUrl } from './links';
 import type { ReportMeta } from './types';
 
 const meta: ReportMeta = { repo: 'clems4ever/specguard', commit: 'abc123' };
@@ -32,5 +32,16 @@ describe('refLabel', () => {
     expect(refLabel('a/b_test.go', 9)).toBe('a/b_test.go:9');
     expect(refLabel('a/b.md')).toBe('a/b.md');
     expect(refLabel('a/b.md', 0)).toBe('a/b.md');
+  });
+});
+
+describe('previewUrl', () => {
+  it('joins a preview base and a spec path, normalising slashes', () => {
+    expect(previewUrl('https://pr-9.example', '/login')).toBe('https://pr-9.example/login');
+    expect(previewUrl('https://pr-9.example/', 'login')).toBe('https://pr-9.example/login');
+  });
+  it('is null unless both are present', () => {
+    expect(previewUrl(undefined, '/login')).toBeNull();
+    expect(previewUrl('https://x', undefined)).toBeNull();
   });
 });

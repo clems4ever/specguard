@@ -1,6 +1,7 @@
 ---
 id: ui-spec-detail
 title: A spec detail shows its behaviour and tests
+preview: /spec/ui-dashboard
 parent: ui-report
 covers:
   - web/src

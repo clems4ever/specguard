@@ -114,3 +114,13 @@ func TestParseAreaNoFrontmatter(t *testing.T) {
 		t.Fatalf("got %+v", a)
 	}
 }
+
+func TestParsePreview(t *testing.T) {
+	s, err := Parse([]byte("---\nid: x\ntitle: y\npreview: /login\n---\nbody\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Preview != "/login" {
+		t.Fatalf("preview = %q", s.Preview)
+	}
+}

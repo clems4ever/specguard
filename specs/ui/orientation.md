@@ -1,6 +1,7 @@
 ---
 id: ui-orientation
 title: The report orients a first-time reader
+preview: /
 parent: ui-report
 covers:
   - web/src/components/Intro.tsx

@@ -238,6 +238,23 @@ code {
   background: var(--panel-2);
 }
 
+/* ---- try it live ---- */
+.try-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #06101f;
+  font-weight: 600;
+  text-decoration: none;
+}
+.try-live:hover {
+  filter: brightness(1.1);
+}
+
 /* ---- acceptance ---- */
 .accept-summary {
   padding: 10px 14px;
