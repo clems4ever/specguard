@@ -173,10 +173,11 @@ file):
 specguard report -results playwright.json -assets public/assets -o public/index.html
 ```
 
-`.github/workflows/pages.yml` publishes this for `main` to GitHub Pages on every
-push, so anyone can explore the specs at a stable URL without checking out the
-repo — for this repo, <https://clems4ever.github.io/specguard/>. (Enable it via
-**Settings → Pages → Source = "GitHub Actions"**.)
+`.github/workflows/pages.yml` publishes this for `main` to the `gh-pages` branch
+root on every push, so anyone can explore the specs at a stable URL without
+checking out the repo — for this repo, <https://clems4ever.github.io/specguard/>.
+Per-PR previews (see below) publish to `/pr-<n>/` on the same branch. (Enable via
+**Settings → Pages → Source = "Deploy from a branch: `gh-pages` / (root)"**.)
 
 ## Dogfooding
 

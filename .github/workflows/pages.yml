@@ -16,9 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write # publishes the report to the gh-pages branch root
 
 # Never let two Pages deploys race; the newest push wins.
 concurrency:
@@ -81,16 +79,12 @@ jobs:
           # on a hard refresh — GitHub Pages returns 404.html for unknown paths.
           cp public/index.html public/404.html
 
-      - uses: actions/upload-pages-artifact@v3
+      # Publish main's report to the gh-pages branch ROOT. keep_files preserves
+      # the per-PR preview directories (pr-<n>/) that preview.yml publishes to the
+      # same branch, so the site serves the main catalog at / and previews at
+      # /pr-<n>/. (Pages Source must be set to the gh-pages branch.)
+      - uses: peaceiris/actions-gh-pages@v4
         with:
-          path: public
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          keep_files: true
