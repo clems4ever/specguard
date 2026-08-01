@@ -181,6 +181,10 @@ func extFor(contentType string) string {
 		return ".jpg"
 	case "image/webp":
 		return ".webp"
+	case "video/webm":
+		return ".webm"
+	case "video/mp4":
+		return ".mp4"
 	default:
 		return ".png"
 	}
@@ -243,14 +247,15 @@ func pwSpecStatus(sp pwSpec) lint.TestStatus {
 	return st
 }
 
-// pwImages collects the image attachments (screenshots) across a spec's test
-// results, keeping their source filesystem path for the report to copy.
+// pwImages collects the visual attachments — screenshots and videos — across a
+// spec's test results, keeping their source filesystem path for the report to
+// copy. Together they form the spec's captured-behaviour walkthrough.
 func pwImages(sp pwSpec) []lint.Artifact {
 	var out []lint.Artifact
 	for _, tt := range sp.Tests {
 		for _, r := range tt.Results {
 			for _, a := range r.Attachments {
-				if !strings.HasPrefix(a.ContentType, "image/") {
+				if !strings.HasPrefix(a.ContentType, "image/") && !strings.HasPrefix(a.ContentType, "video/") {
 					continue
 				}
 				if src, ok := a.source(); ok {
