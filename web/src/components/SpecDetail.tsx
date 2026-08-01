@@ -6,6 +6,7 @@ import { StatusBadge } from './StatusBadge';
 import { Markdown } from './Markdown';
 import { FindingsPanel } from './FindingsPanel';
 import { Gallery } from './Gallery';
+import { Acceptance } from './Acceptance';
 
 const RESULT_GLYPH: Record<TestStatus, string> = { passed: '✓', failed: '✗', skipped: '–' };
 
@@ -114,6 +115,8 @@ export function SpecDetail({
       <div className="detail-path" data-testid="detail-path">
         <CodeRef meta={meta} path={spec.path} testid="spec-source-link" />
       </div>
+
+      <Acceptance spec={spec} />
 
       {children.length > 0 && (
         <section className="detail-children" data-testid="detail-children">

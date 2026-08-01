@@ -1,0 +1,107 @@
+# Behavioural-acceptance gate.
+#
+# The loop:
+#   1. On every PR, `gate` runs `specguard accept --check`. It is RED while any
+#      implemented spec is not accepted at its current fingerprint (a new or
+#      behaviourally-changed spec). Make this a required check in branch
+#      protection and the PR cannot merge until a PM signs off.
+#   2. When a PM APPROVES the PR, `accept-on-approval` records their behavioural
+#      sign-off into .specguard/acceptance.jsonl and pushes it to the PR branch,
+#      which turns the gate green.
+#
+# A pure refactor (covering tests unchanged) never changes a fingerprint, so the
+# gate stays green and the PM is never re-summoned. Editing a spec's intent or a
+# covering test flips just that spec to "stale" → re-review.
+name: acceptance
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # The gate: fail while any behaviour awaits PM review.
+  gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build specguard
+        run: go build -o specguard ./cmd/specguard
+      - name: Behavioural-acceptance gate
+        id: gate
+        run: |
+          set -o pipefail
+          ./specguard accept --check | tee accept.txt
+      - name: Comment the specs awaiting review
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "### 🔬 Behavioural review required"
+            echo
+            echo "A PM must review these behaviours in the demo before this can merge."
+            echo "Approve this PR and specguard records your sign-off automatically."
+            echo
+            echo '```'
+            cat accept.txt
+            echo '```'
+          } > body.md
+          gh pr comment "$PR" --body-file body.md --repo "$GITHUB_REPOSITORY"
+
+  # PM approval → record acceptance for the reviewed behaviours.
+  accept-on-approval:
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Is the reviewer a PM?
+        id: pm
+        env:
+          PMS: ${{ vars.PM_REVIEWERS }}
+          REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          # If PM_REVIEWERS is unset, any approver counts (rely on branch
+          # protection / CODEOWNERS for who may approve). If set, restrict to it.
+          if [ -z "$PMS" ] || echo "$PMS" | tr ',' '\n' | grep -qx "$REVIEWER"; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$REVIEWER is not in PM_REVIEWERS — not recording acceptance"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.pm.outputs.ok == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          # A PAT pushes as a real user so the gate RE-RUNS on the new commit;
+          # the default GITHUB_TOKEN push does not re-trigger workflows.
+          token: ${{ secrets.SPECGUARD_PAT || github.token }}
+      - if: steps.pm.outputs.ok == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Record the PM's acceptance
+        if: steps.pm.outputs.ok == 'true'
+        env:
+          REVIEWER: ${{ github.event.review.user.login }}
+          EVIDENCE: ${{ github.event.pull_request.html_url }}
+        run: |
+          go build -o specguard ./cmd/specguard
+          ./specguard accept --all --by "$REVIEWER" --evidence "$EVIDENCE"
+          if git diff --quiet -- .specguard/acceptance.jsonl; then
+            echo "No new behaviours to accept."
+            exit 0
+          fi
+          git config user.name "specguard-bot"
+          git config user.email "specguard-bot@users.noreply.github.com"
+          git add .specguard/acceptance.jsonl
+          git commit -m "accept: $REVIEWER signed off the reviewed behaviours"
+          git push

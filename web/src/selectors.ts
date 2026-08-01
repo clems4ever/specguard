@@ -191,6 +191,10 @@ export interface Summary {
   failing: number;
   skipped: number;
   notRun: number; // covered specs with no result in the run
+  // PM acceptance roll-up over specs that carry a direct test.
+  accepted: number;
+  needsReview: number; // implemented-but-unaccepted + stale
+  stale: number;
 }
 
 export function summarize(report: Report): Summary {
@@ -204,7 +208,19 @@ export function summarize(report: Report): Summary {
   let failing = 0;
   let skipped = 0;
   let notRun = 0;
+  let accepted = 0;
+  let needsReview = 0;
+  let stale = 0;
   for (const s of specs) {
+    // Acceptance is tracked for specs that carry a direct test (the behaviours
+    // a PM signs off); test-less parent specs roll up through their children.
+    if (s.covered) {
+      if (s.lifecycle === 'accepted') accepted++;
+      else if (s.lifecycle === 'stale') {
+        stale++;
+        needsReview++;
+      } else if (s.lifecycle === 'implemented') needsReview++;
+    }
     // A parent spec is verified by its children, so it counts as covered. Its
     // pass/fail is a roll-up of its leaves (counted below), not a direct result.
     const isCovered = s.covered || !!s.hasChild;
@@ -241,6 +257,9 @@ export function summarize(report: Report): Summary {
     failing,
     skipped,
     notRun,
+    accepted,
+    needsReview,
+    stale,
   };
 }
 

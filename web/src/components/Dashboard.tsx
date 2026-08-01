@@ -259,6 +259,23 @@ export function Dashboard({
         <>
           <Intro hasResults={summary.hasResults} />
 
+          {summary.accepted + summary.needsReview > 0 && (
+            <div
+              className={`accept-summary ${summary.needsReview > 0 ? 'accept-summary-pending' : 'accept-summary-ok'}`}
+              data-testid="acceptance-summary"
+            >
+              <strong>PM review:</strong> {summary.accepted} accepted
+              {summary.needsReview > 0 ? (
+                <>
+                  , <strong>{summary.needsReview} awaiting review</strong>
+                  {summary.stale > 0 && ` (${summary.stale} changed since acceptance)`}
+                </>
+              ) : (
+                ' — every implemented behaviour is signed off'
+              )}
+            </div>
+          )}
+
           <input
             className="search"
             data-testid="search"

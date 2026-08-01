@@ -60,6 +60,29 @@ describe('SpecDetail', () => {
     expect(onSelect).toHaveBeenCalledWith('cap');
   });
 
+  it('shows PM acceptance state (accepted / awaiting / stale)', () => {
+    const mk = (lifecycle: 'accepted' | 'implemented' | 'stale') =>
+      spec({
+        id: 'auth-login',
+        title: 'Log in',
+        path: 'specs/auth/login.md',
+        covered: true,
+        tests: ['a_test.go'],
+        fingerprint: 'abc123',
+        lifecycle,
+        acceptedBy: lifecycle === 'accepted' ? 'pm@acme' : undefined,
+        acceptedAt: lifecycle === 'accepted' ? '2026-08-01T00:00:00Z' : undefined,
+      });
+    const rep = { ok: true, testFiles: 1, findings: [], specs: [] };
+
+    const { unmount } = render(<SpecDetail spec={mk('accepted')} report={rep} onBack={() => {}} />);
+    expect(screen.getByTestId('acceptance')).toHaveTextContent('accepted by pm@acme');
+    unmount();
+
+    render(<SpecDetail spec={mk('implemented')} report={rep} onBack={() => {}} />);
+    expect(screen.getByTestId('acceptance')).toHaveTextContent('Awaiting PM');
+  });
+
   it('renders the covers list', () => {
     render(<SpecDetail spec={login} report={mixedReport} onBack={() => {}} />);
     expect(within(screen.getByTestId('covers-list')).getByText('server/auth.go')).toBeInTheDocument();
