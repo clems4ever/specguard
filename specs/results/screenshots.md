@@ -1,14 +1,17 @@
 ---
 id: results-screenshots
-title: Screenshots attach to their spec
+title: Screenshots and videos attach to their spec
 parent: results-overlay
 covers:
   - internal/results
 ---
 ## Behaviour
 
-Image attachments on a `@spec:<id>`-tagged Playwright test are collected as that spec's artifacts; non-image attachments are ignored.
+Image and video attachments on a `@spec:<id>`-tagged Playwright test are
+collected as that spec's artifacts, in order; other attachment types (e.g. a
+trace zip) are ignored.
 
 ## Why
 
-A screenshot is visual proof of a behaviour — attaching it to the spec turns the report into something a PM can look at.
+A screenshot or a short clip is visual proof of a behaviour — attaching it to the
+spec turns the report into something a PM can watch, not just read.

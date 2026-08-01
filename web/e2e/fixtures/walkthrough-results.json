@@ -1,0 +1,13 @@
+{
+  "suites": [
+    { "specs": [
+      { "title": "logs in", "tags": ["@spec:auth-login"], "tests": [ { "results": [ {
+        "status": "passed",
+        "attachments": [
+          { "name": "Given the login screen", "contentType": "image/png", "path": "e2e/fixtures/login.png" },
+          { "name": "the recorded run", "contentType": "video/webm", "path": "e2e/fixtures/clip.webm" }
+        ]
+      } ] } ] }
+    ] }
+  ]
+}

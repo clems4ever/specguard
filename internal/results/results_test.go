@@ -96,6 +96,7 @@ const playwrightWithShots = `{
       {"title": "logs in", "tags": ["@%SPEC%auth-login"], "tests": [{"results": [{"status": "passed",
         "attachments": [
           {"name": "login screen", "contentType": "image/png", "path": "/tmp/a.png"},
+          {"name": "the run", "contentType": "video/webm", "path": "/tmp/v.webm"},
           {"name": "trace", "contentType": "application/zip", "path": "/tmp/t.zip"}
         ]}]}]}
     ]}
@@ -109,12 +110,15 @@ func TestPlaywrightImageAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 	arts := set.ArtifactsBySpec["auth-login"]
-	// Only the image is kept; the trace zip is ignored.
-	if len(arts) != 1 {
-		t.Fatalf("artifacts = %+v, want 1 image", arts)
+	// The image and the video are kept (in order); the trace zip is ignored.
+	if len(arts) != 2 {
+		t.Fatalf("artifacts = %+v, want image + video", arts)
 	}
 	if arts[0].Name != "login screen" || arts[0].Path != "/tmp/a.png" {
-		t.Errorf("artifact = %+v", arts[0])
+		t.Errorf("image artifact = %+v", arts[0])
+	}
+	if arts[1].Name != "the run" || arts[1].Path != "/tmp/v.webm" {
+		t.Errorf("video artifact = %+v", arts[1])
 	}
 }
 

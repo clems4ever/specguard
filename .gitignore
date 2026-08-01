@@ -1,3 +1,4 @@
 /specguard
 /dist/
 *.out
+web/.e2e-*
