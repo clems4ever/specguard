@@ -36,4 +36,23 @@ describe('Gallery', () => {
     await userEvent.click(lightbox);
     expect(screen.queryByTestId('lightbox')).not.toBeInTheDocument();
   });
+
+  it('shows each artifact caption as a walkthrough step', () => {
+    render(<Gallery artifacts={shots} />);
+    expect(screen.getByText('Walkthrough (2)')).toBeInTheDocument();
+    expect(screen.getByTestId('gallery-caption-0')).toHaveTextContent('login screen');
+    expect(screen.getByTestId('gallery-caption-1')).toHaveTextContent('error state');
+  });
+
+  it('renders a video artifact as an inline player, not a thumbnail', () => {
+    render(
+      <Gallery
+        artifacts={[{ name: 'the whole flow', path: 'assets/specs/x/0.webm' }]}
+      />,
+    );
+    const vid = screen.getByTestId('gallery-video-0');
+    expect(vid.tagName).toBe('VIDEO');
+    expect(vid).toHaveAttribute('src', '/assets/specs/x/0.webm');
+    expect(screen.queryByTestId('gallery-thumb-0')).not.toBeInTheDocument();
+  });
 });

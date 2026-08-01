@@ -64,6 +64,11 @@ jobs:
       - name: Generate specguard's own spec report (dogfood)
         run: |
           mkdir -p public
+          # specguard's own "app" IS this report, so a spec's `preview` path (a
+          # report route) resolves against the published site — "Try it live"
+          # opens the actual screen the spec describes.
+          owner="$(echo "${GITHUB_REPOSITORY%/*}" | tr 'A-Z' 'a-z')"
+          base="https://${owner}.github.io/${GITHUB_REPOSITORY#*/}/"
           # specguard reports on ITSELF: specs/ pinned to the Go tests under
           # internal/ and the UI e2e under web/e2e — each spec's real pass/fail,
           # deep links to the covering test, and screenshots of its own screens.
@@ -72,6 +77,7 @@ jobs:
             -branch "${{ github.ref_name }}" \
             -commit "${{ github.sha }}" \
             -repo "${{ github.repository }}" \
+            -preview-base "$base" \
             -results "$RUNNER_TEMP/go-results.json,$RUNNER_TEMP/e2e.json" \
             -assets public/assets -assets-base assets \
             -o public/index.html

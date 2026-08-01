@@ -71,3 +71,4 @@
 {"spec":"ui-search","fingerprint":"d272913dfefd5440","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
 {"spec":"ui-spec-detail","fingerprint":"f97c0253128910c9","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
 {"spec":"ui-subpath-assets","fingerprint":"52a4963cd22ae57a","verdict":"accepted","by":"clems4ever","at":"2026-08-01T20:46:18Z","evidence":"re-baseline: fingerprint algorithm → function-granular"}
+{"spec":"ui-search","fingerprint":"08f0c23f556310c3","verdict":"accepted","by":"clems4ever","at":"2026-08-01T21:09:30Z","evidence":"https://clems4ever.github.io/specguard/"}

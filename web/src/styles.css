@@ -731,7 +731,28 @@ code {
 .gallery {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gallery-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 220px;
+}
+.gallery-caption {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.gallery-video {
+  width: 220px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #000;
+  display: block;
 }
 .gallery-thumb {
   padding: 0;

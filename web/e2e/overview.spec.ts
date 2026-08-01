@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+// Record a video of each run and attach it — published as the spec's clip
+// alongside its screenshots, so a reviewer can watch the behaviour, not just
+// read it. Must be file-level (Playwright forbids test.use({video}) in describe).
+test.use({ video: 'on' });
+
 // These run against the real Go server serving the real built UI and the live
 // report for the bundled example project (9 specs, one draft → PASS with one
 // warning). No mocking — this is the full stack end to end.
@@ -94,18 +99,30 @@ test('dashboard shows the example project report', { tag: '@spec:ui-dashboard' }
   await testInfo.attach('dashboard', { body: await page.screenshot(), contentType: 'image/png' });
 });
 
+// A captioned Given/When/Then walkthrough, published as this spec's gallery —
+// the concrete example a reviewer reads instead of prose alone. `video: 'on'`
+// (file-level, below the imports) makes Playwright also attach a recording.
 test('search filters the spec list', { tag: '@spec:ui-search' }, async ({ page }, testInfo) => {
   await page.goto('/');
+  await testInfo.attach('Given the full catalog of specs', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+
   await page.getByTestId('search').fill('login');
   await expect(page.getByTestId('spec-row-auth-login')).toBeVisible();
   await expect(page.getByTestId('spec-row-tasks-create')).toBeHidden();
-  await testInfo.attach('search — filtered to “login”', {
+  await testInfo.attach('When filtering for “login”, only matching specs remain', {
     body: await page.screenshot(),
     contentType: 'image/png',
   });
 
   await page.getByTestId('search').fill('nothing-xyz');
   await expect(page.getByTestId('no-match')).toBeVisible();
+  await testInfo.attach('Then a query that matches nothing shows an empty state', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
 });
 
 test('opens a spec detail with rendered body and covering tests', { tag: '@spec:ui-spec-detail' }, async ({ page }, testInfo) => {
