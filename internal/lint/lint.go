@@ -297,7 +297,7 @@ func Run(cfg Config) (*Report, error) {
 			Covered: len(specRefs) > 0, CoversOK: true, Draft: draft,
 			HasChild: hasChild[s.ID],
 		}
-		st.Fingerprint = fingerprint(s.ID, s.Title, s.Body, coveringFiles, testContent)
+		st.Fingerprint = fingerprint(s.ID, s.Title, s.Body, specRefs, testContent)
 		st.Lifecycle = lifecycleOf(st.Covered, st.Fingerprint, acceptedFPs[s.ID])
 		if st.Lifecycle == LifeAccepted {
 			if a, ok := latestAcc[s.ID+"@"+st.Fingerprint]; ok {

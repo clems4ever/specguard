@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -45,11 +46,13 @@ type Acceptance struct {
 }
 
 // fingerprint hashes the *expectation*: the spec's intent (id, title, body) and
-// the verbatim source of every covering test, sorted for stability. It
-// deliberately excludes pass/fail and screenshots — those are guarded
-// continuously by CI, not by the one-time human review — so a refactor that
-// keeps the tests' source identical does not invalidate an acceptance.
-func fingerprint(id, title, body string, coveringFiles []string, content map[string]string) string {
+// the verbatim source of each covering test — the specific test *function or
+// block*, not the whole file, and keyed by source rather than location. So
+// adding an unrelated test to a shared file, reordering tests, or renaming the
+// file leaves the fingerprint unchanged; only editing a covering test's own
+// source (or the intent) moves it. Pass/fail and screenshots are excluded —
+// those are guarded continuously by CI, not by the one-time human review.
+func fingerprint(id, title, body string, refs []Ref, content map[string]string) string {
 	h := sha256.New()
 	io := func(s string) { _, _ = h.Write([]byte(s)); _, _ = h.Write([]byte{0}) }
 	io("id")
@@ -58,14 +61,94 @@ func fingerprint(id, title, body string, coveringFiles []string, content map[str
 	io(title)
 	io("intent")
 	io(body)
-	files := append([]string(nil), coveringFiles...)
-	sort.Strings(files)
-	for _, f := range files {
+
+	// Collect the source of each covering test block, de-duplicated by content
+	// and sorted, so neither location nor order affects the hash.
+	seen := map[string]bool{}
+	var blocks []string
+	for _, r := range refs {
+		src, ok := content[r.File]
+		if !ok {
+			continue
+		}
+		block := coveringBlock(src, r, strings.HasSuffix(r.File, "_test.go"))
+		if !seen[block] {
+			seen[block] = true
+			blocks = append(blocks, block)
+		}
+	}
+	sort.Strings(blocks)
+	for _, b := range blocks {
 		io("test")
-		io(f)
-		io(content[f])
+		io(b)
 	}
 	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
+// tsTestStart matches the opener of a JS/TS test construct, so a reference's
+// enclosing test(...) call can be located.
+var tsTestStart = regexp.MustCompile(`\b(test|it|describe)(\.\w+)?\s*\(`)
+
+// coveringBlock returns the source of the test a reference sits in: the Go
+// function it names, or the enclosing test(...) call for other languages. It
+// falls back to the whole file when the block can't be isolated, so acceptance
+// is never silently kept across a behaviour change (over- rather than
+// under-triggering).
+func coveringBlock(content string, r Ref, isGo bool) string {
+	lines := strings.Split(content, "\n")
+	start := -1
+	if isGo && r.Test != "" {
+		for i, ln := range lines {
+			if m := funcPattern.FindStringSubmatch(ln); m != nil && m[1] == r.Test {
+				start = i
+				break
+			}
+		}
+	} else {
+		// r.Line is 1-based; the tag usually sits on the test(...) opener line.
+		from := r.Line - 1
+		if from >= len(lines) {
+			from = len(lines) - 1
+		}
+		for i := from; i >= 0 && i >= from-8; i-- {
+			if tsTestStart.MatchString(lines[i]) {
+				start = i
+				break
+			}
+		}
+	}
+	if start < 0 {
+		return content
+	}
+	if block, ok := braceBlock(lines, start); ok {
+		return block
+	}
+	return content
+}
+
+// braceBlock returns lines[start:] up to and including the line where brace
+// depth (opened on or after start) first returns to zero — i.e. the construct's
+// full source. Not string/comment aware; good enough for well-formed tests.
+func braceBlock(lines []string, start int) (string, bool) {
+	depth, started := 0, false
+	var b strings.Builder
+	for i := start; i < len(lines); i++ {
+		b.WriteString(lines[i])
+		b.WriteByte('\n')
+		for _, c := range lines[i] {
+			switch c {
+			case '{':
+				depth++
+				started = true
+			case '}':
+				depth--
+			}
+		}
+		if started && depth <= 0 {
+			return b.String(), true
+		}
+	}
+	return "", false
 }
 
 // LoadLedger reads the acceptance ledger under root. A missing ledger is not an
